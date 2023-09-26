@@ -18,7 +18,7 @@
 class ClearPathMC {
 	private:
 		// Motor
-		ConnectorM0 motor;
+		MotorDriver motor = ConnectorM0;
 		
 		// A reference to the maximum clockwise and counter-clockwise velocities set in
 		// the MSP software. These must match the values in MSP software
@@ -30,7 +30,7 @@ class ClearPathMC {
 		// command velocity with a finer resolution
 		const double velocity_resolution = 1.0;
 		
-		void check_for_faults();
+		bool check_for_faults();
 		void handle_motor_faults();
 		void assert_HLFB();
 		

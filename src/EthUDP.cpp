@@ -13,7 +13,15 @@ EthUDP::EthUDP():
 	local_ip(169, 254, 97, 177),
 	local_port {8888}
 {
-		
+	
+}
+
+EthUDP::EthUDP(IpAddress _ip):
+	local_ip(_ip),
+	local_port {8888}
+{
+	
+	
 }
 
 EthUDP::~EthUDP() {}

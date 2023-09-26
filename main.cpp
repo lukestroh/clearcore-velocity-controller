@@ -49,10 +49,10 @@
 #include "EthUDP.h"
 #include "ClearPathMC.h"
 
-//// Set a static address for the ClearCore Controller
-//IpAddress ip = IpAddress(169, 254, 97, 177);
+// Set a static address for the ClearCore Controller
+IpAddress ip = IpAddress(169, 254, 97, 177);
 
-EthUDP eth;
+EthUDP eth(ip);
 
 ClearPathMC motor0;
 

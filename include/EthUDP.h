@@ -28,6 +28,7 @@ class EthUDP {
 		EthernetUdp udp;
 		
 		EthUDP();
+		EthUDP(IpAddress _ip);
 		~EthUDP();		
 		
 		// Public methods
