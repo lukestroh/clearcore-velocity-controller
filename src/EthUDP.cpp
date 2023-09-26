@@ -16,6 +16,8 @@ EthUDP::EthUDP():
 		
 }
 
+EthUDP::~EthUDP() {}
+
 void EthUDP::begin(void) {
 	/* Set up UDP Ethernet communication */
 	// Check physical Ethernet link
@@ -60,8 +62,16 @@ void EthUDP::read_packet(void) {
 
 char* EthUDP::construct_data_msg(float data) {
 	/* Construct the message to send to the ROS2 Node on the host computer */
+	memset(&msg_buf[0], 0, sizeof(msg_buf));
+	char data_buf[10];
+	sprintf(data_buf, "%f", data);
+	char header[19] = "{'servo_velocity':";
+	char footer[2] = "}";
 	
-	return "";
+	strcpy(msg_buf, header);
+	strcat(msg_buf, data_buf);
+	strcat(msg_buf, footer);
+	return msg_buf;
 }
 
 

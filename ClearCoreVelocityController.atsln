@@ -13,6 +13,8 @@ Project("{E66E83B9-2572-4076-B26E-6BE79FF3018A}") = "ManualVelocity", "..\..\..\
 EndProject
 Project("{E66E83B9-2572-4076-B26E-6BE79FF3018A}") = "RampUpDownToSelectedVelocity", "..\..\..\..\..\..\Program Files (x86)\Teknic\ClearCore-Library 1.0\Microchip_Examples\ClearPathModeExamples\ClearPath-MC_Series\RampUpDownToSelectedVelocity\RampUpDownToSelectedVelocity.cppproj", "{12385F85-B107-40D7-A55B-2FB5094C4402}"
 EndProject
+Project("{E66E83B9-2572-4076-B26E-6BE79FF3018A}") = "FollowDigitalVelocityWithVariableTorque", "..\..\..\..\..\..\Program Files (x86)\Teknic\ClearCore-Library 1.0\Microchip_Examples\ClearPathModeExamples\ClearPath-MC_Series\FollowDigitalVelocityWithVariableTorque\FollowDigitalVelocityWithVariableTorque.cppproj", "{3C7B1CEB-17C5-4007-8729-EFEF36976508}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM = Debug|ARM
@@ -37,6 +39,10 @@ Global
 		{12385F85-B107-40D7-A55B-2FB5094C4402}.Debug|ARM.ActiveCfg = Debug|ARM
 		{12385F85-B107-40D7-A55B-2FB5094C4402}.Release|ARM.ActiveCfg = Release|ARM
 		{12385F85-B107-40D7-A55B-2FB5094C4402}.Release|ARM.Build.0 = Release|ARM
+		{3C7B1CEB-17C5-4007-8729-EFEF36976508}.Debug|ARM.ActiveCfg = Debug|ARM
+		{3C7B1CEB-17C5-4007-8729-EFEF36976508}.Debug|ARM.Build.0 = Debug|ARM
+		{3C7B1CEB-17C5-4007-8729-EFEF36976508}.Release|ARM.ActiveCfg = Release|ARM
+		{3C7B1CEB-17C5-4007-8729-EFEF36976508}.Release|ARM.Build.0 = Release|ARM
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
