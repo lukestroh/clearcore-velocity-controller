@@ -15,6 +15,10 @@ class EthUDP {
 		// Local IP address, port
 		IpAddress local_ip;
 		const int local_port;
+		
+		// Host IP address, port
+		IpAddress remote_ip = IpAddress(169, 254, 253, 179);
+		const int remote_port = 8888;
 	
 	public:
 		// Data buffer
@@ -29,6 +33,7 @@ class EthUDP {
 		
 		EthUDP();
 		EthUDP(IpAddress _ip);
+		EthUDP(IpAddress _ip, int _port);
 		~EthUDP();		
 		
 		// Public methods

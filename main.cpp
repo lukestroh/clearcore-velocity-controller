@@ -75,7 +75,7 @@ void set_up_serial(void) {
 int main(void) {
 	set_up_serial();
 	eth.begin();
-	motor0.begin();
+	//motor0.begin();
 	
 	while (true) {
 		// Read data from the ROS2 node.

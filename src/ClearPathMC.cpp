@@ -41,6 +41,8 @@ void ClearPathMC::begin() {
 	
 	// Wait for HLFB
 	assert_HLFB();
+	
+	ConnectorUsb.SendLine("Motor setup complete.");
 }
 
 
@@ -76,7 +78,13 @@ void ClearPathMC::handle_motor_faults() {
  
 
 void ClearPathMC::assert_HLFB() {
+	/* Make sure the HLFB is connected */
 	while (motor.HlfbState() != MotorDriver::HLFB_ASSERTED && !motor.StatusReg().bit.MotorInFault) {
+		ConnectorUsb.SendLine("ERROR IN HLFB ASSERT:");
+		ConnectorUsb.Send("\tHLFB STATE: ");
+		ConnectorUsb.SendLine(motor.HlfbState());
+		ConnectorUsb.Send("\tMOTOR IN FAULT: ");
+		ConnectorUsb.SendLine(motor.StatusReg().bit.MotorInFault);
 		continue;
 	}
 }

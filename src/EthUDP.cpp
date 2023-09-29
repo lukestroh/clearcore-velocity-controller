@@ -24,6 +24,13 @@ EthUDP::EthUDP(IpAddress _ip):
 	
 }
 
+EthUDP::EthUDP(IpAddress _ip, int _port):
+	local_ip(_ip),
+	local_port(_port)
+{
+	
+}
+
 EthUDP::~EthUDP() {}
 
 void EthUDP::begin(void) {
@@ -87,8 +94,9 @@ void EthUDP::send_packet(float data) {
 	/* Send a packet */
 	char* msg = construct_data_msg(data);
 	
-	udp.Connect(udp.RemoteIp(), udp.RemotePort());
+	udp.Connect(remote_ip, remote_port);
 	udp.PacketWrite(msg);
 	udp.PacketSend();
 }
+
 
