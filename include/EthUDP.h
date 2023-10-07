@@ -2,7 +2,7 @@
  * EthUDP.h
  *
  * Created: 9/21/2023 6:16:53 PM
- *  Author: Luke Strohbehn
+ * Author: Luke Strohbehn
  */ 
 #include "ClearCore.h"
 #include "EthernetUdp.h"
@@ -17,7 +17,7 @@ class EthUDP {
 		const int local_port;
 		
 		// Host IP address, port
-		IpAddress remote_ip = IpAddress(169, 254, 253, 179);
+		IpAddress remote_ip = IpAddress(169, 254, 93, 234);
 		const int remote_port = 8888;
 	
 	public:

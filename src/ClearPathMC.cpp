@@ -2,21 +2,22 @@
  * ClearPathMC.cpp
  *
  * Created: 9/25/2023 11:37:01 AM
- *  Author: Luke Strohbehn
+ * Author: Luke Strohbehn
  */
 
 #include "ClearPathMC.h"
 
-ClearPathMC::ClearPathMC() {
-	
-	
-}
+ClearPathMC::ClearPathMC() {}
 
 
-ClearPathMC::~ClearPathMC() {
-
+ClearPathMC::ClearPathMC(int _id): 
+	motor_id(_id) 
+{
 	
 }
+
+
+ClearPathMC::~ClearPathMC() {}
 
 
 void ClearPathMC::begin() {
@@ -31,14 +32,14 @@ void ClearPathMC::begin() {
 	// Set the HLFB carrier frequency to 482 Hz
 	motor.HlfbCarrier(MotorDriver::HLFB_CARRIER_482_HZ);
 	
-	// Enforce the state of the motor's A and B inputs before enabling
+	// Enforce the state of the motor's A and B inputs before enabling the motor
 	motor.MotorInAState(false);
 	motor.MotorInBState(false);
-	
+		
 	// Enable the motor
 	motor.EnableRequest(true);
 	ConnectorUsb.SendLine("Motor enabled.");
-	
+		
 	// Wait for HLFB
 	assert_HLFB();
 	
@@ -85,6 +86,10 @@ void ClearPathMC::assert_HLFB() {
 		ConnectorUsb.SendLine(motor.HlfbState());
 		ConnectorUsb.Send("\tMOTOR IN FAULT: ");
 		ConnectorUsb.SendLine(motor.StatusReg().bit.MotorInFault);
+		
+		ConnectorUsb.Send("\tHLFB Percent: ");
+		ConnectorUsb.SendLine(motor.HlfbPercent());
+		Delay_ms(100);
 		continue;
 	}
 }
@@ -121,6 +126,12 @@ void ClearPathMC::move_at_target_velocity() {
 	int32_t curr_velocity_rounded = round(current_velocity / velocity_resolution);
 	int32_t target_velocity_rounded = round(target_velocity / velocity_resolution);
 	int32_t velocity_difference = labs(target_velocity_rounded - curr_velocity_rounded);
+	
+	// If no difference in current vs. target velocity, exit function
+	if (velocity_difference == 0) {
+		return;
+	}
+	
 	for (int32_t i = 0; i < velocity_difference; ++i) {
 		if (target_velocity > current_velocity) {
 			// Toggle Input A to begin the quadrature signal
@@ -144,25 +155,21 @@ void ClearPathMC::move_at_target_velocity() {
 			motor.MotorInAState(false);
 			Delay_us(5);
 		}
-		
-		// Update the current velocity
-		current_velocity = target_velocity;
-		
-		// Wait for High-Level Feedback (HLFB) to assert (signaling if the motor has reached
-		// its target velocity)
-		ConnectorUsb.SendLine("Ramping speed, waiting for HLFB.");
-		assert_HLFB();
-		
-		// Check to see if motor faulted during move
-		if (check_for_faults()) {
-			ConnectorUsb.SendLine("Motion may not have completed as expected. Proceed with caution.");
-		}
-		else {
-			ConnectorUsb.SendLine("Move done.");
-		}
-		
-		
-		ConnectorUsb.SendLine("Target velocity reached.");
 	}
+	
+	// Update the current velocity
+	current_velocity = target_velocity;
+		
+	// Wait for High-Level Feedback (HLFB) to assert (signaling if the motor has reached
+	// its target velocity)
+	ConnectorUsb.SendLine("Ramping speed, waiting for HLFB.");
+	assert_HLFB();
+		
+	// Check to see if motor faulted during move
+	if (check_for_faults()) {
+		ConnectorUsb.SendLine("Motion may not have completed as expected. Proceed with caution.");
+	}
+	else {
+		ConnectorUsb.SendLine("Move done.");
+	}	
 }
-
