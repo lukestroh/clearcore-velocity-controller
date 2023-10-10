@@ -4,6 +4,8 @@
 
 Device_Startup\startup_same53.c
 
+src\ClearPathMC.cpp
+
 src\EthUDP.cpp
 
 main.cpp

@@ -2,7 +2,7 @@
  * EthUDP.cpp
  *
  * Created: 9/21/2023 6:20:23 PM
- *  Author: Luke Strohbehn
+ * Author: Luke Strohbehn
  */ 
 
 
@@ -13,7 +13,22 @@ EthUDP::EthUDP():
 	local_ip(169, 254, 97, 177),
 	local_port {8888}
 {
-		
+	
+}
+
+EthUDP::EthUDP(IpAddress _ip):
+	local_ip(_ip),
+	local_port {8888}
+{
+	
+	
+}
+
+EthUDP::EthUDP(IpAddress _ip, int _port):
+	local_ip(_ip),
+	local_port(_port)
+{
+	
 }
 
 EthUDP::~EthUDP() {}
@@ -44,6 +59,8 @@ void EthUDP::begin(void) {
 	}
 	else {
 		EthernetMgr.LocalIp(local_ip);
+		//EthernetMgr.GatewayIp(IpAddress(169,254, 93, 234));
+		//EthernetMgr.NetmaskIp(IpAddress(255, 255, 0, 0));
 	}
 	
 	// Begin listening on the local port for UDP datagrams
@@ -65,7 +82,7 @@ char* EthUDP::construct_data_msg(float data) {
 	memset(&msg_buf[0], 0, sizeof(msg_buf));
 	char data_buf[10];
 	sprintf(data_buf, "%f", data);
-	char header[19] = "{'servo_velocity':";
+	char header[19] = "{\"servo_velocity\":";
 	char footer[2] = "}";
 	
 	strcpy(msg_buf, header);
@@ -79,8 +96,9 @@ void EthUDP::send_packet(float data) {
 	/* Send a packet */
 	char* msg = construct_data_msg(data);
 	
-	udp.Connect(udp.RemoteIp(), udp.RemotePort());
+	udp.Connect(remote_ip, remote_port);
 	udp.PacketWrite(msg);
 	udp.PacketSend();
 }
+
 

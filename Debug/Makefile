@@ -41,6 +41,7 @@ SUBDIRS :=  \
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS +=  \
 ../Device_Startup/startup_same53.c \
+../src/ClearPathMC.cpp \
 ../src/EthUDP.cpp \
 ../main.cpp
 
@@ -53,21 +54,25 @@ ASM_SRCS +=
 
 OBJS +=  \
 Device_Startup/startup_same53.o \
+src/ClearPathMC.o \
 src/EthUDP.o \
 main.o
 
 OBJS_AS_ARGS +=  \
 Device_Startup/startup_same53.o \
+src/ClearPathMC.o \
 src/EthUDP.o \
 main.o
 
 C_DEPS +=  \
 Device_Startup/startup_same53.d \
+src/ClearPathMC.d \
 src/EthUDP.d \
 main.d
 
 C_DEPS_AS_ARGS +=  \
 Device_Startup/startup_same53.d \
+src/ClearPathMC.d \
 src/EthUDP.d \
 main.d
 
@@ -93,6 +98,13 @@ Device_Startup/startup_same53.o: ../Device_Startup/startup_same53.c
 	@echo Building file: $<
 	@echo Invoking: ARM/GNU C Compiler : 6.3.1
 	$(QUOTE)C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\arm\arm-gnu-toolchain\bin\arm-none-eabi-gcc.exe$(QUOTE)  -x c -mthumb -D__SAME53N19A__ -DDEBUG  -I"C:\Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\SAME53_DFP\1.1.118\include" -I"C:\Program Files (x86)\Atmel\Studio\7.0\Packs\arm\CMSIS\4.5.0\CMSIS\Include" -I"$(UROS_DIR)/rcl/rcl/include" -I"$(UROS_DIR)/rclc/rclc/include" -I"$(UROS_DIR)/rcutils/include" -I"$(MICROROS_WS)/src/firmware/mcu_ws/ros2/rmw/rmw/include" -I"$(MICROROS_WS)/src/firmware/mcu_ws/ros2/rosidl/rosidl_runtime_c/include" -I"$(MICROROS_WS)/src/firmware/mcu_ws/ros2/rosidl/rosidl_typesupport_interface/include" -I"$(MICROROS_WS)/src/firmware/mcu_ws/ros2/rcl/rcl_action/include" -I"$(MICROROS_WS)/install/action_msgs/include/action_msgs" -I"$(MICROROS_WS)/install/unique_identifier_msgs/include/unique_identifier_msgs" -I"$(MICROROS_WS)/install/builtin_interfaces/include/builtin_interfaces" -I"$(MICROROS_WS)/src/firmware/mcu_ws/uros/rcutils/include" -I"$(MICROROS_WS)/src/firmware/mcu_ws/uros/rcutils/resource" -I"$(MICROROS_WS)/install/std_msgs/include/std_msgs" -I"$(MICROROS_MS)/install/geometry_msgs/include/geometry_msgs"  -O3 -ffunction-sections -fdata-sections -g3 -Wall -mcpu=cortex-m4 -c -std=gnu11 --param max-inline-insns-single=50 -MMD -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16 -MD -MP -MF "$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)"   -o "$@" "$<" 
+	@echo Finished building: $<
+	
+
+src/ClearPathMC.o: ../src/ClearPathMC.cpp
+	@echo Building file: $<
+	@echo Invoking: ARM/GNU C Compiler : 6.3.1
+	$(QUOTE)C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\arm\arm-gnu-toolchain\bin\arm-none-eabi-g++.exe$(QUOTE) -mthumb -D__SAME53N19A__ -DDEBUG  -I"C:\Program Files (x86)\Atmel\Studio\7.0\Packs\arm\CMSIS\4.5.0\CMSIS\Include" -I"C:\Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\SAME53_DFP\1.1.118\include" -I"../../libClearCore/inc" -I"../../LwIP/LwIP/src/include" -I"../../LwIP/LwIP/port/include" -I"C:\Users\lukes\Documents\Atmel Studio\7.0\ClearCoreVelocityController\include"  -O3 -ffunction-sections -fno-rtti -fno-exceptions -g2 -Wall -mcpu=cortex-m4 -c -std=gnu++11 -fno-threadsafe-statics -nostdlib --param max-inline-insns-single=500 -MMD -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16 -MD -MP -MF "$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)"   -o "$@" "$<" 
 	@echo Finished building: $<
 	
 

@@ -2,7 +2,7 @@
  * ClearPathMC.h
  *
  * Created: 9/21/2023 6:04:25 PM
- *  Author: Luke Strohbehn
+ * Author: Luke Strohbehn
  */
 
 #include "ClearCore.h"
@@ -18,24 +18,26 @@
 class ClearPathMC {
 	private:
 		// Motor
-		ConnectorM0 motor;
+		MotorDriver& motor = ConnectorM0;
 		
 		// A reference to the maximum clockwise and counter-clockwise velocities set in
 		// the MSP software. These must match the values in MSP software
-		const int32_t max_velocity_CW = 2500;
-		const int32_t max_velocity_CCW = 2500;
+		const int32_t max_velocity_CW = 1000;
+		const int32_t max_velocity_CCW = 1000;
 		
 		// Each velocity commanded will be a multiple of this value, which must match
 		// the Velocity Resolution value in MSP. Use a lower value here (and in MSP) to
 		// command velocity with a finer resolution
 		const double velocity_resolution = 1.0;
+		int motor_id;
 		
-		void check_for_faults();
+		bool check_for_faults();
 		void handle_motor_faults();
 		void assert_HLFB();
 		
 	public:
 		ClearPathMC();
+		ClearPathMC(int _id);
 		~ClearPathMC();
 		
 		double target_velocity = 0.0;

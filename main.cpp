@@ -49,12 +49,14 @@
 #include "EthUDP.h"
 #include "ClearPathMC.h"
 
-//// Set a static address for the ClearCore Controller
-//IpAddress ip = IpAddress(169, 254, 97, 177);
+// Set a static address for the ClearCore Controller
+IpAddress ip = IpAddress(169, 254, 97, 177);
 
-EthUDP eth;
+EthUDP eth(ip);
 
-ClearPathMC motor0;
+
+
+ClearPathMC motor0(0);
 
 
 void set_up_serial(void) {
@@ -70,8 +72,6 @@ void set_up_serial(void) {
 }
 
 
-
-
 int main(void) {
 	set_up_serial();
 	eth.begin();
@@ -83,15 +83,18 @@ int main(void) {
 		
 		// If new data, parse for new motor control
 		if (eth.new_data) {
-			ConnectorUsb.Send("Data received from address ");
-			ConnectorUsb.Send(eth.udp.RemoteIp().StringValue());
-			ConnectorUsb.Send(": ");
+			// Set the new target velocity
 			motor0.set_velocity(atof(reinterpret_cast<const char*>(eth.received_packet)));
-			ConnectorUsb.SendLine(motor0.target_velocity);
 			eth.new_data = false;
 		}
 		
+		// Move to target velocity (blocking)
+		motor0.move_at_target_velocity();
+		
 		// Send data to the ROS2 node.
-		eth.send_packet(2.712);
+		eth.send_packet(motor0.target_velocity);
+		
+		// Check position/limits, if boundary, set motor speed to zero
+		
 	}
 }
