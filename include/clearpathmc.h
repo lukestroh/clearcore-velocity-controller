@@ -31,6 +31,13 @@ class ClearPathMC {
 		const double velocity_resolution = 1.0;
 		int motor_id;
 		
+		// Limit switch pins
+		ClearCorePins limit_switch_pin_neg = CLEARCORE_PIN_IO0;
+		ClearCorePins limit_switch_pin_pos = CLEARCORE_PIN_IO1;
+		
+		// Emergency stop pin
+		ClearCorePins emergency_stop_pin = CLEARCORE_PIN_DI6;
+		
 		bool check_for_faults();
 		void handle_motor_faults();
 		void assert_HLFB();
@@ -45,7 +52,7 @@ class ClearPathMC {
 		
 		void begin();
 		void get_position();
-		void get_velocity();
+		float get_velocity();
 		void set_position(double pos);
 		void set_velocity(double vel);
 		

@@ -35,6 +35,13 @@
 	*      from the dropdown, make sure that 482 Hz is selected in the "PWM Carrier
 	*      Frequency" dropdown, and hit the OK button).
 	*
+	* LIMIT SWITCHES:
+	* 1. Limit switches should be connected to the I0 and I1 inputs on the controller.
+	*
+	*
+	* EMERGENCY STOP:
+	* 1. Emergency stop should be connected to the DI-6 input on the controller.
+	*
 	* Links:
 	* ** ClearCore Documentation: https://teknic-inc.github.io/ClearCore-library/
 	* ** ClearCore Manual: https://www.teknic.com/files/downloads/clearcore_user_manual.pdf
@@ -49,15 +56,13 @@
 #include "EthUDP.h"
 #include "ClearPathMC.h"
 
-// Set a static address for the ClearCore Controller
-IpAddress ip = IpAddress(169, 254, 97, 177);
+// Set static addresses for the ClearCore Controller
+IpAddress local_ip = IpAddress(169, 254, 97, 177);
+IpAddress remote_ip = IpAddress(169, 254, 57, 209);
 
-EthUDP eth(ip);
-
-
+EthUDP eth(local_ip, remote_ip);
 
 ClearPathMC motor0(0);
-
 
 void set_up_serial(void) {
 	/* Set up Serial communication with computer for debugging */
@@ -74,6 +79,7 @@ void set_up_serial(void) {
 
 int main(void) {
 	set_up_serial();
+	
 	eth.begin();
 	motor0.begin();
 	
@@ -91,10 +97,12 @@ int main(void) {
 		// Move to target velocity (blocking)
 		motor0.move_at_target_velocity();
 		
-		// Send data to the ROS2 node.
-		eth.send_packet(motor0.target_velocity);
+		// Get current velocity
+		float motor_vel = motor0.get_velocity();
+		ConnectorUsb.SendLine(motor_vel);
+		ConnectorUsb.SendLine(motor0.target_velocity);
 		
-		// Check position/limits, if boundary, set motor speed to zero
-		
+		// Send velocity data to the ROS2 node.
+		eth.send_packet(motor_vel);
 	}
 }
