@@ -39,6 +39,19 @@ void ClearPathMC::begin() {
 	// Enable the motor
 	motor.EnableRequest(true);
 	ConnectorUsb.SendLine("Motor enabled.");
+	
+	// Set the limit switches
+	if (!motor.LimitSwitchNeg(limit_switch_pin_neg)) {
+		ConnectorUsb.SendLine("Error in enabling negative limit switch. Proceed with caution.");
+	}
+	if (!motor.LimitSwitchPos(limit_switch_pin_pos)) {
+		ConnectorUsb.SendLine("Error in enabling positive limit switch. Proceed with caution.");
+	}
+	
+	// Set up the emergency stop
+	if (!motor.EStopConnector(emergency_stop_pin)) {
+		ConnectorUsb.SendLine("Error in enabling emergency stop switch. Proceed with caution.");
+	}
 		
 	// Wait for HLFB
 	assert_HLFB();
@@ -95,8 +108,24 @@ void ClearPathMC::assert_HLFB() {
 }
 
 
-void ClearPathMC::get_velocity() {
-	
+float ClearPathMC::get_velocity() {
+	/* 
+	Get the current velocity from the HLFB
+	The duty cycle scales as a percentage of the maximum motor speed configured in the currently selected operating mode.
+		- 5% duty cycle = 0% max speed
+		- 95% duty cycle = 100% max speed
+	HLFB output deasserts (i.e., 0% duty cycle, "off", non-conducting) when the motor is disabled or shutdown.
+	*/
+	MotorDriver::HlfbStates hlfb_state = motor.HlfbState();
+	if (hlfb_state == MotorDriver::HLFB_HAS_MEASUREMENT) {
+		// Get the measured speed as a percent of Max Speed
+		float hlfb_vel_percent = motor.HlfbPercent();
+		float hlfb_vel = hlfb_vel_percent * max_velocity_CW;
+		return hlfb_vel;
+	}
+	else {
+		return 0.0;
+	}
 }
 
 void ClearPathMC::set_velocity(double vel) {

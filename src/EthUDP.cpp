@@ -11,24 +11,48 @@
 EthUDP::EthUDP():
 	/* Initialize class variables */
 	local_ip(169, 254, 97, 177),
-	local_port {8888}
+	local_port {8888},
+	remote_ip(169, 254, 57, 209),
+	remote_port {8888}
 {
 	
 }
 
-EthUDP::EthUDP(IpAddress _ip):
-	local_ip(_ip),
-	local_port {8888}
+EthUDP::EthUDP(IpAddress _local_ip):
+	local_ip(_local_ip),
+	local_port {8888},
+	remote_ip(169, 254, 57, 209),
+	remote_port {8888}
 {
 	
 	
 }
 
-EthUDP::EthUDP(IpAddress _ip, int _port):
-	local_ip(_ip),
-	local_port(_port)
+EthUDP::EthUDP(IpAddress _local_ip, int _local_port):
+	local_ip(_local_ip),
+	local_port(_local_port),
+	remote_ip(169, 254, 57, 209),
+	remote_port {8888}
 {
 	
+}
+
+EthUDP::EthUDP(IpAddress _local_ip, IpAddress _remote_ip):
+	local_ip(_local_ip),
+	local_port {8888},
+	remote_ip(_remote_ip),
+	remote_port {8888}
+{
+	
+}
+
+EthUDP::EthUDP(IpAddress _local_ip, int _local_port, IpAddress _remote_ip, int _remote_port):
+	local_ip(_local_ip),
+	local_port(_local_port),
+	remote_ip(_remote_ip),
+	remote_port(_remote_port)
+{
+
 }
 
 EthUDP::~EthUDP() {}
