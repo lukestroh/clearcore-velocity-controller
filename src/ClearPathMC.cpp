@@ -6,6 +6,7 @@
  */
 
 #include "ClearPathMC.h"
+#include "interrupts.h"
 
 ClearPathMC::ClearPathMC() {}
 
@@ -40,19 +41,13 @@ void ClearPathMC::begin() {
 	motor.EnableRequest(true);
 	ConnectorUsb.SendLine("Motor enabled.");
 	
-	// Set the limit switches
-	if (!motor.LimitSwitchNeg(limit_switch_pin_neg)) {
-		ConnectorUsb.SendLine("Error in enabling negative limit switch. Proceed with caution.");
-	}
-	if (!motor.LimitSwitchPos(limit_switch_pin_pos)) {
-		ConnectorUsb.SendLine("Error in enabling positive limit switch. Proceed with caution.");
-	}
+	// Enable pin interrupts
+	limit_switch_pin_neg.InterruptHandlerSet(&neg_lim_switch_callback, InputManager::RISING, true);
+	limit_switch_pin_pos.InterruptHandlerSet(&pos_lim_switch_callback, InputManager::RISING, true);
+	emergency_stop_pin.InterruptHandlerSet(&emergency_stop_callback, InputManager::RISING, true);
 	
-	// Set up the emergency stop
-	if (!motor.EStopConnector(emergency_stop_pin)) {
-		ConnectorUsb.SendLine("Error in enabling emergency stop switch. Proceed with caution.");
-	}
-		
+	
+	
 	// Wait for HLFB
 	assert_HLFB();
 	
@@ -142,11 +137,21 @@ void ClearPathMC::set_velocity(double vel) {
 }
 
 
-void ClearPathMC::move_at_target_velocity() {
+void ClearPathMC::move_at_target_velocity(bool hard_stop) {
 	/* Move the motor at the set target velocity */
 	
 	// Check motor status
 	check_for_faults();
+	
+	// If at negative limit switch, don't let target velocity be negative
+	if (neg_lim_switch_flag && target_velocity < 0) {
+		target_velocity = 0;
+	}
+	
+	// If at positive limit switch, don't let target velocity be positive
+	if (pos_lim_switch_flag && target_velocity > 0) {
+		target_velocity = 0;
+	}
 	
 	// Determine which order the quadrature must be sent by determining if the
 	// new velocity is greater or less than the previously commanded velocity
@@ -162,6 +167,10 @@ void ClearPathMC::move_at_target_velocity() {
 	}
 	
 	for (int32_t i = 0; i < velocity_difference; ++i) {
+		// If a flag is raised via interrupts
+		if ((e_stop_flag || neg_lim_switch_flag || pos_lim_switch_flag) && (!hard_stop)) {
+			return;
+		}
 		if (target_velocity > current_velocity) {
 			// Toggle Input A to begin the quadrature signal
 			motor.MotorInAState(true);

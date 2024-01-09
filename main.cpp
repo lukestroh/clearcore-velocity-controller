@@ -55,6 +55,11 @@
 #include "ClearCore.h"
 #include "EthUDP.h"
 #include "ClearPathMC.h"
+#include "system.h"
+
+volatile bool neg_lim_switch_flag = false;
+volatile bool pos_lim_switch_flag = false;
+volatile bool e_stop_flag = false;
 
 // Set static addresses for the ClearCore Controller
 IpAddress local_ip = IpAddress(169, 254, 97, 177);
@@ -63,6 +68,9 @@ IpAddress remote_ip = IpAddress(169, 254, 57, 209);
 EthUDP eth(local_ip, remote_ip);
 
 ClearPathMC motor0(0);
+
+// System state variable
+volatile slidersystem::SystemStatus system_state = slidersystem::SYSTEM_STANDBY;
 
 void set_up_serial(void) {
 	/* Set up Serial communication with computer for debugging */
@@ -76,15 +84,45 @@ void set_up_serial(void) {
 	}
 }
 
+void reset_slider(void) {
+	/* Reset the linear slider to position 0, where base is closest to the motor. 
+	   Run the motor at a low constant velocity until the negative limit switch is trigged
+	   and send a message via Ethernet to ROS2. */ 
+	motor0.target_velocity = -30;
+	while (!neg_lim_switch_flag) {
+		motor0.move_at_target_velocity();
+		eth.send_packet(system_state, motor0.target_velocity);
+	}
+	motor0.target_velocity = 0;
+	motor0.move_at_target_velocity(true);
+}
+
+bool read_switch(DigitalIn& switch_pin, bool& interrupt_flag) {
+	if (interrupt_flag) {
+		bool reading = switch_pin.State();
+		static bool change_pending = false;
+		if (!reading) {
+			change_pending = true;
+		}
+		if (reading && change_pending) {
+			interrupt_flag = false;
+			change_pending = false;
+			return true;
+		}
+	}
+	return false;
+}
+
 
 int main(void) {
 	set_up_serial();
-	
 	eth.begin();
 	motor0.begin();
 	
+	reset_slider();
+	
 	while (true) {
-		// Read data from the ROS2 node.
+		// Read data from the ROS2 hardware interface.
 		eth.read_packet();
 		
 		// If new data, parse for new motor control
@@ -94,15 +132,37 @@ int main(void) {
 			eth.new_data = false;
 		}
 		
+		// Limit switch check
+		if (neg_lim_switch_flag) {
+			motor0.target_velocity = 0;
+			motor0.move_at_target_velocity(true);
+			//system_state = slidersystem::SystemStatus::NEG_LIM;
+		}
+		if (pos_lim_switch_flag) {
+			motor0.target_velocity = 0;
+			motor0.move_at_target_velocity(true);
+			//system_state = slidersystem::SystemStatus::POS_LIM;
+		}
+		
+		// E stop check
+		while (e_stop_flag) {
+			motor0.target_velocity = 0;
+			motor0.move_at_target_velocity(true);
+			//system_state = slidersystem::SystemStatus::E_STOP;
+			ConnectorUsb.SendLine("EMERGENCY STOP TRIGGERED. CHECK ALL HARDWARE.");
+			eth.send_packet(system_state, motor0.target_velocity);
+			Delay_ms(1000);
+		}
+		
 		// Move to target velocity (blocking)
 		motor0.move_at_target_velocity();
 		
-		// Get current velocity
-		float motor_vel = motor0.get_velocity();
-		ConnectorUsb.SendLine(motor_vel);
+		//// Get current velocity
+		//float motor_vel = motor0.get_velocity();
+		//ConnectorUsb.SendLine(motor_vel);
 		ConnectorUsb.SendLine(motor0.target_velocity);
 		
-		// Send velocity data to the ROS2 node.
-		eth.send_packet(motor_vel);
+		// Send status, velocity data to the ROS2 node.
+		eth.send_packet(system_state, motor0.target_velocity);		
 	}
 }

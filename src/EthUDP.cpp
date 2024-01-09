@@ -101,24 +101,34 @@ void EthUDP::read_packet(void) {
 	}
 }
 
-char* EthUDP::construct_data_msg(float data) {
-	/* Construct the message to send to the ROS2 Node on the host computer */
+char* EthUDP::construct_data_msg(slidersystem::SystemStatus system_status, float data) {
+	/* Construct the message to send to the ROS2 Node on the host computer 
+	
+	https://stackoverflow.com/questions/23966080/sending-struct-over-udp-c
+	*/
+	
 	memset(&msg_buf[0], 0, sizeof(msg_buf));
+	char status_buf[2];
+	sprintf(status_buf, "%d", system_status);
 	char data_buf[10];
 	sprintf(data_buf, "%f", data);
-	char header[19] = "{\"servo_velocity\":";
+	char status_header[11] = "{\"status\":";
+	char vel_header[13] = "\"servo_rpm\":";
 	char footer[2] = "}";
 	
-	strcpy(msg_buf, header);
+	strcpy(msg_buf, status_header);
+	strcat(msg_buf, status_buf);
+	strcat(msg_buf, ",");
+	strcat(msg_buf, vel_header);
 	strcat(msg_buf, data_buf);
 	strcat(msg_buf, footer);
 	return msg_buf;
 }
 
 
-void EthUDP::send_packet(float data) {
+void EthUDP::send_packet(slidersystem::SystemStatus system_status, float data) {
 	/* Send a packet */
-	char* msg = construct_data_msg(data);
+	char* msg = construct_data_msg(system_status, data);
 	
 	udp.Connect(remote_ip, remote_port);
 	udp.PacketWrite(msg);

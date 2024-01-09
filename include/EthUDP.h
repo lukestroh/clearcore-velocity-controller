@@ -6,6 +6,7 @@
  */ 
 #include "ClearCore.h"
 #include "EthernetUdp.h"
+#include "system.h"
 
 #ifndef ETHUDP_H_
 #define ETHUDP_H_
@@ -41,8 +42,8 @@ class EthUDP {
 		// Public methods
 		void begin();
 		void read_packet();
-		char* construct_data_msg(float data); // // Set true if using DHCP to configure the local IP address
-		void send_packet(float data);
+		char* construct_data_msg(slidersystem::SystemStatus system_status, float data);
+		void send_packet(slidersystem::SystemStatus system_status, float data);
 };
 
 #endif /* ETHUDP_H_ */
