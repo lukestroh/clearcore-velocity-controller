@@ -14,6 +14,7 @@ namespace slidersystem
 	enum SystemStatus {
 		SYSTEM_OK,
 		SYSTEM_STANDBY,
+		SYSTEM_CALIBRATING,
 		NEG_LIM,
 		POS_LIM,
 		E_STOP,

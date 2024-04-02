@@ -23,12 +23,12 @@ void emergency_stop_callback() {
 
 void neg_lim_switch_callback() {
 	neg_lim_switch_flag = true;
-	system_status = slidersystem::POS_LIM;
+	system_status = slidersystem::NEG_LIM;
 }
 
 void pos_lim_switch_callback() {
 	pos_lim_switch_flag = true;
-	system_status = slidersystem::NEG_LIM;
+	system_status = slidersystem::POS_LIM;
 }
 
 #endif /* INTERRUPTS_H_ */

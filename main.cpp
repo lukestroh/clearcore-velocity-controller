@@ -51,6 +51,9 @@
 	* the standard MIT permissive software license which can be found at https://opensource.org/licenses/MIT
  */
 
+#ifndef __SERIAL_DEBUG__
+#define __SERIAL_DEBUG__ 1
+#endif
 
 #include "ClearCore.h"
 #include "EthUDP.h"
@@ -70,7 +73,7 @@ EthUDP eth(local_ip, remote_ip);
 ClearPathMC motor0(0);
 
 // System state variable
-volatile slidersystem::SystemStatus system_state = slidersystem::SYSTEM_STANDBY;
+volatile slidersystem::SystemStatus system_status = slidersystem::SYSTEM_STANDBY;
 
 void set_up_serial(void) {
 	/* Set up Serial communication with computer for debugging */
@@ -84,18 +87,20 @@ void set_up_serial(void) {
 	}
 }
 
-void reset_slider(void) {
-	/* Reset the linear slider to position 0, where base is closest to the motor. 
-	   Run the motor at a low constant velocity until the negative limit switch is trigged
-	   and send a message via Ethernet to ROS2. */ 
-	motor0.target_velocity = -30;
-	while (!neg_lim_switch_flag) {
-		motor0.move_at_target_velocity();
-		eth.send_packet(system_state, motor0.target_velocity);
-	}
-	motor0.target_velocity = 0;
-	motor0.move_at_target_velocity(true);
-}
+//void reset_slider(void) {
+	///* Reset the linear slider to position 0, where base is closest to the motor. 
+	   //Run the motor at a low constant velocity until the negative limit switch is trigged
+	   //and send a message via Ethernet to ROS2. */ 
+	//system_status = slidersystem::SYSTEM_CALIBRATING;
+	//motor0.target_velocity = -30;
+	//while (!neg_lim_switch_flag) {
+		//motor0.move_at_target_velocity();
+		//eth.send_packet(system_status, motor0.target_velocity);
+	//}
+	//motor0.target_velocity = 0;
+	//motor0.move_at_target_velocity(true);
+	//system_status = slidersystem::SYSTEM_STANDBY;
+//}
 
 bool read_switch(DigitalIn& switch_pin, bool& interrupt_flag) {
 	if (interrupt_flag) {
@@ -115,42 +120,62 @@ bool read_switch(DigitalIn& switch_pin, bool& interrupt_flag) {
 
 
 int main(void) {
+#if __SERIAL_DEBUG__
 	set_up_serial();
+#endif
+
+	
 	eth.begin();
 	motor0.begin();
+	system_status = slidersystem::SYSTEM_CALIBRATING;
+	motor0.calibrate(eth);
 	
-	reset_slider();
-	
+	// Main run loop
 	while (true) {
 		// Read data from the ROS2 hardware interface.
 		eth.read_packet();
 		
 		// If new data, parse for new motor control
 		if (eth.new_data) {
-			// Set the new target velocity
-			motor0.set_velocity(atof(reinterpret_cast<const char*>(eth.received_packet)));
-			eth.new_data = false;
+			// Check to see if calibration requested
+			if (eth.command_data.status == slidersystem::SYSTEM_CALIBRATING) {
+				motor0.calibrate(eth);
+			}
+			else {
+				// Set the new target velocity
+				motor0.set_velocity(eth.command_data.vel_command);
+				eth.new_data = false;
+			}
 		}
 		
 		// Limit switch check
 		if (neg_lim_switch_flag) {
 			motor0.target_velocity = 0;
 			motor0.move_at_target_velocity(true);
-			//system_state = slidersystem::SystemStatus::NEG_LIM;
+			system_status = slidersystem::NEG_LIM;
+			neg_lim_switch_flag = false;
 		}
 		if (pos_lim_switch_flag) {
 			motor0.target_velocity = 0;
 			motor0.move_at_target_velocity(true);
-			//system_state = slidersystem::SystemStatus::POS_LIM;
+			system_status = slidersystem::POS_LIM;
+			pos_lim_switch_flag = false;
+		}
+
+		// System status update (pins are logic high)
+		if (motor0.limit_switch_pin_neg.State() || motor0.limit_switch_pin_pos.State()) {
+			system_status = slidersystem::SYSTEM_OK;
 		}
 		
 		// E stop check
 		while (e_stop_flag) {
 			motor0.target_velocity = 0;
 			motor0.move_at_target_velocity(true);
-			//system_state = slidersystem::SystemStatus::E_STOP;
+			//system_status = slidersystem::SystemStatus::E_STOP;
+#if __SERIAL_DEBUG__
 			ConnectorUsb.SendLine("EMERGENCY STOP TRIGGERED. CHECK ALL HARDWARE.");
-			eth.send_packet(system_state, motor0.target_velocity);
+#endif // __SERIAL_DEBUG__
+			eth.send_packet(system_status, motor0.target_velocity);
 			Delay_ms(1000);
 		}
 		
@@ -160,9 +185,9 @@ int main(void) {
 		//// Get current velocity
 		//float motor_vel = motor0.get_velocity();
 		//ConnectorUsb.SendLine(motor_vel);
-		ConnectorUsb.SendLine(motor0.target_velocity);
+
 		
 		// Send status, velocity data to the ROS2 node.
-		eth.send_packet(system_state, motor0.target_velocity);		
+		eth.send_packet(system_status, motor0.target_velocity);		
 	}
 }

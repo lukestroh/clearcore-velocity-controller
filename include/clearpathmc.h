@@ -6,6 +6,7 @@
  */
 
 #include "ClearCore.h"
+#include "EthUDP.h"
 
 
 #ifndef CLEARPATHMC_H_
@@ -18,13 +19,10 @@
 extern volatile bool neg_lim_switch_flag;
 extern volatile bool pos_lim_switch_flag;
 extern volatile bool e_stop_flag;
+extern volatile slidersystem::SystemStatus system_status;
 
 class ClearPathMC {	
-	private:
-		// Limit switch pins
-		DigitalIn& limit_switch_pin_neg = ConnectorIO0;
-		DigitalIn& limit_switch_pin_pos = ConnectorIO1;
-	
+	private:	
 		// Emergency stop pin
 		DigitalIn& emergency_stop_pin = ConnectorDI6;
 		
@@ -35,6 +33,7 @@ class ClearPathMC {
 		// the MSP software. These must match the values in MSP software
 		const int32_t max_velocity_CW = 1000;
 		const int32_t max_velocity_CCW = 1000;
+		const int8_t calibration_velocity = 100;
 		
 		// Each velocity commanded will be a multiple of this value, which must match
 		// the Velocity Resolution value in MSP. Use a lower value here (and in MSP) to
@@ -50,6 +49,10 @@ class ClearPathMC {
 		ClearPathMC();
 		ClearPathMC(int _id);
 		~ClearPathMC();
+
+		// Limit switch pins
+		DigitalIn& limit_switch_pin_neg = ConnectorDI7;
+		DigitalIn& limit_switch_pin_pos = ConnectorDI8;
 		
 		double target_velocity = 0.0;
 		double current_velocity = 0.0;
@@ -57,12 +60,12 @@ class ClearPathMC {
 		void begin();
 		void get_position();
 		float get_velocity();
-		void set_position(double pos);
-		void set_velocity(double vel);
+		void set_velocity(int vel);
 		
 		void move_at_target_velocity(bool hard_stop = false);
+		void calibrate(EthUDP& _eth);
 		
-		void stop();
+		//void stop();
 };
 
 

@@ -5,6 +5,10 @@
  * Author: Luke Strohbehn
  */
 
+#ifndef __SERIAL_DEBUG__
+#define __SERIAL_DEBUG__ 1
+#endif
+
 #include "ClearPathMC.h"
 #include "interrupts.h"
 
@@ -39,19 +43,19 @@ void ClearPathMC::begin() {
 		
 	// Enable the motor
 	motor.EnableRequest(true);
+#if __SERIAL_DEBUG__
 	ConnectorUsb.SendLine("Motor enabled.");
-	
+#endif
 	// Enable pin interrupts
-	limit_switch_pin_neg.InterruptHandlerSet(&neg_lim_switch_callback, InputManager::RISING, true);
-	limit_switch_pin_pos.InterruptHandlerSet(&pos_lim_switch_callback, InputManager::RISING, true);
+	limit_switch_pin_neg.InterruptHandlerSet(&neg_lim_switch_callback, InputManager::FALLING, true);
+	limit_switch_pin_pos.InterruptHandlerSet(&pos_lim_switch_callback, InputManager::FALLING, true);
 	emergency_stop_pin.InterruptHandlerSet(&emergency_stop_callback, InputManager::RISING, true);
-	
-	
 	
 	// Wait for HLFB
 	assert_HLFB();
-	
+#if __SERIAL_DEBUG__
 	ConnectorUsb.SendLine("Motor setup complete.");
+#endif
 }
 
 
@@ -61,11 +65,15 @@ bool ClearPathMC::check_for_faults() {
 	*/
 	if (motor.StatusReg().bit.MotorInFault) {
 		if (HANDLE_MOTOR_FAULTS) {
+#if __SERIAL_DEBUG__
 			ConnectorUsb.SendLine("Motor fault detected. Move canceled.");
+#endif
 			handle_motor_faults();
 		}
 		else {
+#if __SERIAL_DEBUG__
 			ConnectorUsb.SendLine("Motor fault detected. Move canceled. Enable automatic fault handling by setting HANDLE_MOTOR FAULTS to 1.");
+#endif
 		}
 		return true;
 	}
@@ -78,7 +86,9 @@ void ClearPathMC::handle_motor_faults() {
 	 *    Assumes motor is in fault 
 	 *      (this function is called when motor.StatusReg.MotorInFault == true)
 	 */
+#if __SERIAL_DEBUG__
  	ConnectorUsb.SendLine("Handling fault: clearing faults by cycling enable signal to motor.");
+#endif
 	motor.EnableRequest(false);
 	Delay_ms(10);
 	motor.EnableRequest(true);
@@ -89,6 +99,7 @@ void ClearPathMC::handle_motor_faults() {
 void ClearPathMC::assert_HLFB() {
 	/* Make sure the HLFB is connected */
 	while (motor.HlfbState() != MotorDriver::HLFB_ASSERTED && !motor.StatusReg().bit.MotorInFault) {
+#if __SERIAL_DEBUG__
 		ConnectorUsb.SendLine("ERROR IN HLFB ASSERT:");
 		ConnectorUsb.Send("\tHLFB STATE: ");
 		ConnectorUsb.SendLine(motor.HlfbState());
@@ -97,6 +108,7 @@ void ClearPathMC::assert_HLFB() {
 		
 		ConnectorUsb.Send("\tHLFB Percent: ");
 		ConnectorUsb.SendLine(motor.HlfbPercent());
+#endif
 		Delay_ms(100);
 		continue;
 	}
@@ -109,7 +121,7 @@ float ClearPathMC::get_velocity() {
 	The duty cycle scales as a percentage of the maximum motor speed configured in the currently selected operating mode.
 		- 5% duty cycle = 0% max speed
 		- 95% duty cycle = 100% max speed
-	HLFB output deasserts (i.e., 0% duty cycle, "off", non-conducting) when the motor is disabled or shutdown.
+	HLFB output de-asserts (i.e., 0% duty cycle, "off", non-conducting) when the motor is disabled or shutdown.
 	*/
 	MotorDriver::HlfbStates hlfb_state = motor.HlfbState();
 	if (hlfb_state == MotorDriver::HLFB_HAS_MEASUREMENT) {
@@ -123,18 +135,18 @@ float ClearPathMC::get_velocity() {
 	}
 }
 
-void ClearPathMC::set_velocity(double vel) {
+void ClearPathMC::set_velocity(int vel) {
 	/* Set the target velocity of the ClearPath MC motor, according to maximum velocity limits */
 	if (vel > max_velocity_CCW) {
 		target_velocity = max_velocity_CW;
 	}
-	else if (vel < -max_velocity_CCW) {
+	else if (vel < -1 * max_velocity_CCW) {
 		target_velocity = max_velocity_CCW;
 	}
 	else {
 		target_velocity = vel;
 	}
-}
+}	
 
 
 void ClearPathMC::move_at_target_velocity(bool hard_stop) {
@@ -200,14 +212,60 @@ void ClearPathMC::move_at_target_velocity(bool hard_stop) {
 		
 	// Wait for High-Level Feedback (HLFB) to assert (signaling if the motor has reached
 	// its target velocity)
+#if __SERIAL_DEBUG__
 	ConnectorUsb.SendLine("Ramping speed, waiting for HLFB.");
+#endif
 	assert_HLFB();
 		
 	// Check to see if motor faulted during move
 	if (check_for_faults()) {
+#if __SERIAL_DEBUG__
 		ConnectorUsb.SendLine("Motion may not have completed as expected. Proceed with caution.");
+#endif
 	}
 	else {
+#if __SERIAL_DEBUG__
 		ConnectorUsb.SendLine("Move done.");
+#endif
 	}	
+}
+
+void ClearPathMC::calibrate(EthUDP& _eth) {
+	/* Send the moving base to the motor-side (negative) limit switch */
+	while (system_status == slidersystem::SYSTEM_CALIBRATING) {		
+		if (neg_lim_switch_flag) {
+			// If limit is reached, stop moving
+			target_velocity = 0;
+			move_at_target_velocity(true);
+			neg_lim_switch_flag = false;
+			system_status = slidersystem::NEG_LIM;
+			_eth.send_packet(system_status, target_velocity);
+
+			ConnectorUsb.SendLine(system_status);
+			//ConnectorUsb.SendLine(system_status);
+			return;
+ 		}
+	
+		ConnectorUsb.SendLine(system_status);
+
+		
+		//// If on the switch, move the slider just barely off the switch
+		//if (system_status == slidersystem::NEG_LIM) {
+			//if (limit_switch_pin_neg.State() == true) {
+				//target_velocity = 10;
+				//move_at_target_velocity();
+			//}
+			//else {
+				//target_velocity = 0;
+				//move_at_target_velocity(true);
+				//system_status = slidersystem::SYSTEM_STANDBY;
+			//}
+			//_eth.send_packet(system_status, target_velocity);
+		//}
+
+		// During calibration, move toward negative limit switch
+		target_velocity = calibration_velocity;
+		move_at_target_velocity();
+		_eth.send_packet(system_status, target_velocity);
+	}
 }
