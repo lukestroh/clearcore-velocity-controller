@@ -87,30 +87,16 @@ void set_up_serial(void) {
 	}
 }
 
-//void reset_slider(void) {
-	///* Reset the linear slider to position 0, where base is closest to the motor. 
-	   //Run the motor at a low constant velocity until the negative limit switch is trigged
-	   //and send a message via Ethernet to ROS2. */ 
-	//system_status = slidersystem::SYSTEM_CALIBRATING;
-	//motor0.target_velocity = -30;
-	//while (!neg_lim_switch_flag) {
-		//motor0.move_at_target_velocity();
-		//eth.send_packet(system_status, motor0.target_velocity);
-	//}
-	//motor0.target_velocity = 0;
-	//motor0.move_at_target_velocity(true);
-	//system_status = slidersystem::SYSTEM_STANDBY;
-//}
-
-bool read_switch(DigitalIn& switch_pin, bool& interrupt_flag) {
-	if (interrupt_flag) {
+bool read_switch(DigitalIn& switch_pin, volatile bool* interrupt_flag) {
+	/* Returns true if the interrupt has been triggered */
+	if (*interrupt_flag) {
 		bool reading = switch_pin.State();
 		static bool change_pending = false;
 		if (!reading) {
 			change_pending = true;
 		}
 		if (reading && change_pending) {
-			interrupt_flag = false;
+			*interrupt_flag = false;
 			change_pending = false;
 			return true;
 		}
@@ -124,13 +110,12 @@ int main(void) {
 	set_up_serial();
 #endif
 
-	
 	eth.begin();
 	motor0.begin();
 	system_status = slidersystem::SYSTEM_CALIBRATING;
-	motor0.calibrate(eth);
+	//motor0.calibrate(eth);
 	
-	// Main run loop
+	// Main loop
 	while (true) {
 		// Read data from the ROS2 hardware interface.
 		eth.read_packet();
@@ -139,7 +124,7 @@ int main(void) {
 		if (eth.new_data) {
 			// Check to see if calibration requested
 			if (eth.command_data.status == slidersystem::SYSTEM_CALIBRATING) {
-				motor0.calibrate(eth);
+				motor0.calibrate(&eth);
 			}
 			else {
 				// Set the new target velocity
@@ -149,34 +134,32 @@ int main(void) {
 		}
 		
 		// Limit switch check
-		if (neg_lim_switch_flag) {
-			motor0.target_velocity = 0;
+		if (read_switch(motor0.limit_switch_pin_neg, &neg_lim_switch_flag)) {
+			motor0.set_velocity(0);
 			motor0.move_at_target_velocity(true);
 			system_status = slidersystem::NEG_LIM;
-			neg_lim_switch_flag = false;
 		}
-		if (pos_lim_switch_flag) {
-			motor0.target_velocity = 0;
+		if (read_switch(motor0.limit_switch_pin_pos, &pos_lim_switch_flag)) {
+			motor0.set_velocity(0);
 			motor0.move_at_target_velocity(true);
 			system_status = slidersystem::POS_LIM;
-			pos_lim_switch_flag = false;
 		}
 
 		// System status update (pins are logic high)
-		if (motor0.limit_switch_pin_neg.State() || motor0.limit_switch_pin_pos.State()) {
-			system_status = slidersystem::SYSTEM_OK;
-		}
+		//if (read_switch(motor0.limit_switch_pin_neg) || read_switch(motor0.limit_switch_pin_pos)) {
+			//system_status = slidersystem::SYSTEM_OK;
+		//}
 		
 		// E stop check
 		while (e_stop_flag) {
-			motor0.target_velocity = 0;
+			motor0.set_velocity(0);
 			motor0.move_at_target_velocity(true);
-			//system_status = slidersystem::SystemStatus::E_STOP;
+			system_status = slidersystem::E_STOP;
 #if __SERIAL_DEBUG__
 			ConnectorUsb.SendLine("EMERGENCY STOP TRIGGERED. CHECK ALL HARDWARE.");
 #endif // __SERIAL_DEBUG__
 			eth.send_packet(system_status, motor0.target_velocity);
-			Delay_ms(1000);
+			Delay_ms(5000);
 		}
 		
 		// Move to target velocity (blocking)
