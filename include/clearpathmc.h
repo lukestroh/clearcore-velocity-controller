@@ -16,11 +16,6 @@
 // To disable automatic fault handling, #define HANDLE_MOTOR_FAULTS (0)
 #define HANDLE_MOTOR_FAULTS (0)
 
-extern volatile bool neg_lim_switch_flag;
-extern volatile bool pos_lim_switch_flag;
-extern volatile bool e_stop_flag;
-extern volatile slidersystem::SystemStatus system_status;
-
 class ClearPathMC {	
 	private:	
 		// Emergency stop pin
@@ -31,9 +26,9 @@ class ClearPathMC {
 		
 		// A reference to the maximum clockwise and counter-clockwise velocities set in
 		// the MSP software. These must match the values in MSP software
-		const int32_t max_velocity_CW = 1000;
-		const int32_t max_velocity_CCW = 1000;
-		const int8_t calibration_velocity = 100;
+		const int32_t m_max_velocity_CW = 1000;
+		const int32_t m_max_velocity_CCW = -1000;
+		const int8_t m_calibration_velocity = 100;
 		
 		// Each velocity commanded will be a multiple of this value, which must match
 		// the Velocity Resolution value in MSP. Use a lower value here (and in MSP) to
@@ -63,7 +58,7 @@ class ClearPathMC {
 		void set_velocity(int vel);
 		
 		void move_at_target_velocity(bool hard_stop = false);
-		void calibrate(EthUDP& _eth);
+		void calibrate();
 		
 		//void stop();
 };

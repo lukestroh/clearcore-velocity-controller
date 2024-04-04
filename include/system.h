@@ -15,9 +15,9 @@ namespace slidersystem
 		SYSTEM_OK,
 		SYSTEM_STANDBY,
 		SYSTEM_CALIBRATING,
+		E_STOP,
 		NEG_LIM,
 		POS_LIM,
-		E_STOP,
 	};
 
 } // namespace system

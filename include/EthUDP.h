@@ -27,23 +27,23 @@ class EthUDP {
 		const int m_remote_port;
 		
 		// Read data attributes
-		char* token;
-		const char delimiter[2] = ",";
+		char* m_token;
+		const char m_delimiter[2] = ",";
+		bool m_using_dhcp = false;
+		const uint8_t MAX_PACKET_LENGTH = 128; // Maximum number of characters to receive from an incoming packet
 		
 		// Send data attributes
 		char status_buf[2];
 		char data_buf[10];
 		const char status_header[11] = "{\"status\":";
 		const char data_header[13] = "\"servo_rpm\":";
-		const char footer[2] = "}";		
+		const char footer[2] = "}";			
 	
 	public:
 		// Data buffer
 		bool new_data = false;
-		bool m_using_dhcp = false;
-		const uint8_t MAX_PACKET_LENGTH = 128; // Maximum number of characters to receive from an incoming packet
 		unsigned char received_packet[128]; // Buffer for holding received packets
-		char msg_buf[128];
+		char msg_buf[128]; // Send message buffer
 		
 		// Ethernet UDP
 		EthernetUdp udp;
@@ -61,8 +61,8 @@ class EthUDP {
 		// Public methods
 		void begin();
 		void read_packet();
-		char* construct_data_msg(slidersystem::SystemStatus system_status, float data);
-		void send_packet(slidersystem::SystemStatus system_status, float data);
+		void construct_data_msg(slidersystem::SystemStatus* system_status, float data);
+		void send_packet(slidersystem::SystemStatus* system_status, float data);
 		
 };
 

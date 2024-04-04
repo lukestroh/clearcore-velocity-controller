@@ -12,6 +12,11 @@
 #include "ClearPathMC.h"
 #include "interrupts.h"
 
+extern volatile bool neg_lim_switch_flag;
+extern volatile bool pos_lim_switch_flag;
+extern volatile bool e_stop_flag;
+extern slidersystem::SystemStatus system_status;
+
 ClearPathMC::ClearPathMC() {}
 
 
@@ -65,13 +70,11 @@ bool ClearPathMC::check_for_faults() {
 	*/
 	if (motor.StatusReg().bit.MotorInFault) {
 		if (HANDLE_MOTOR_FAULTS) {
-#if __SERIAL_DEBUG__
-			ConnectorUsb.SendLine("Motor fault detected. Move canceled.");
-#endif
 			handle_motor_faults();
+#if __SERIAL_DEBUG__
+			ConnectorUsb.SendLine("Motor fault detected. Move canceled.");	
 		}
 		else {
-#if __SERIAL_DEBUG__
 			ConnectorUsb.SendLine("Motor fault detected. Move canceled. Enable automatic fault handling by setting HANDLE_MOTOR FAULTS to 1.");
 #endif
 		}
@@ -127,7 +130,7 @@ float ClearPathMC::get_velocity() {
 	if (hlfb_state == MotorDriver::HLFB_HAS_MEASUREMENT) {
 		// Get the measured speed as a percent of Max Speed
 		float hlfb_vel_percent = motor.HlfbPercent();
-		float hlfb_vel = hlfb_vel_percent * max_velocity_CW;
+		float hlfb_vel = hlfb_vel_percent * m_max_velocity_CW;
 		return hlfb_vel;
 	}
 	else {
@@ -137,16 +140,16 @@ float ClearPathMC::get_velocity() {
 
 void ClearPathMC::set_velocity(int vel) {
 	/* Set the target velocity of the ClearPath MC motor, according to maximum velocity limits */
-	if (vel > max_velocity_CCW) {
-		target_velocity = max_velocity_CW;
+	if (vel > m_max_velocity_CW) {
+		target_velocity = m_max_velocity_CW;
 	}
-	else if (vel < -1 * max_velocity_CCW) {
-		target_velocity = max_velocity_CCW;
+	else if (vel < m_max_velocity_CCW) {
+		target_velocity = m_max_velocity_CCW;
 	}
 	else {
 		target_velocity = vel;
 	}
-}	
+}
 
 
 void ClearPathMC::move_at_target_velocity(bool hard_stop) {
@@ -155,6 +158,7 @@ void ClearPathMC::move_at_target_velocity(bool hard_stop) {
 	// Check motor status
 	check_for_faults();
 	
+	// TODO: Handle this limit elsewhere
 	// If at negative limit switch, don't let target velocity be negative
 	if (neg_lim_switch_flag && target_velocity < 0) {
 		target_velocity = 0;
@@ -221,51 +225,33 @@ void ClearPathMC::move_at_target_velocity(bool hard_stop) {
 	if (check_for_faults()) {
 #if __SERIAL_DEBUG__
 		ConnectorUsb.SendLine("Motion may not have completed as expected. Proceed with caution.");
-#endif
 	}
 	else {
-#if __SERIAL_DEBUG__
 		ConnectorUsb.SendLine("Move done.");
 #endif
-	}	
+	}
+
 }
 
-void ClearPathMC::calibrate(EthUDP& _eth) {
+void ClearPathMC::calibrate() {
 	/* Send the moving base to the motor-side (negative) limit switch */
 	while (system_status == slidersystem::SYSTEM_CALIBRATING) {		
 		if (neg_lim_switch_flag) {
 			// If limit is reached, stop moving
-			target_velocity = 0;
+			set_velocity(0);
 			move_at_target_velocity(true);
 			neg_lim_switch_flag = false;
 			system_status = slidersystem::NEG_LIM;
-			_eth.send_packet(system_status, target_velocity);
+			//_eth.send_packet(&system_status, target_velocity);
 
-			ConnectorUsb.SendLine(system_status);
 			//ConnectorUsb.SendLine(system_status);
 			return;
  		}
 	
-		ConnectorUsb.SendLine(system_status);
-
-		
-		//// If on the switch, move the slider just barely off the switch
-		//if (system_status == slidersystem::NEG_LIM) {
-			//if (limit_switch_pin_neg.State() == true) {
-				//target_velocity = 10;
-				//move_at_target_velocity();
-			//}
-			//else {
-				//target_velocity = 0;
-				//move_at_target_velocity(true);
-				//system_status = slidersystem::SYSTEM_STANDBY;
-			//}
-			//_eth.send_packet(system_status, target_velocity);
-		//}
 
 		// During calibration, move toward negative limit switch
-		target_velocity = calibration_velocity;
+		set_velocity(m_calibration_velocity);
 		move_at_target_velocity();
-		_eth.send_packet(system_status, target_velocity);
+		//_eth.send_packet(&system_status, target_velocity);
 	}
 }
