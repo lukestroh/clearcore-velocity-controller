@@ -37,7 +37,7 @@ Velocity Control, then hit the OK button).
     Frequency" dropdown, and hit the OK button).
 
 ### LIMIT SWITCHES:
-1. Limit switches should be connected to the I0 and I1 inputs on the controller.
+1. Negative and Positive Limit switches should be connected to the DI-7 and DI-8 inputs on the controller, respectively.
 
 
 ### EMERGENCY STOP:
