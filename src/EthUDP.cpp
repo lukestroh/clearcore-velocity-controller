@@ -111,30 +111,21 @@ void EthUDP::read_packet(void) {
 		// Parse data from the received packet
 		// Extract first field
 		char* received_packet_cstr = reinterpret_cast<char*>(received_packet);
-		token = strtok(received_packet_cstr, delimiter);
+		m_token = strtok(received_packet_cstr, m_delimiter);
 		
-		if (token != NULL) {
-			command_data.status = static_cast<int8_t>(atoi(token));
-//#if __SERIAL_DEBUG__
-//ConnectorUsb.Send("Field 1 is:");
-//ConnectorUsb.SendLine(command_data.status);
-//#endif
-			
+		if (m_token != NULL) {
+			command_data.status = static_cast<int8_t>(atoi(m_token));			
 			// Extract second field
-			token = strtok(NULL, delimiter);
+			m_token = strtok(NULL, m_delimiter);
 			//token_cstr = reinterpret_cast<char*>(token);
-			if (token != NULL) {
-				command_data.vel_command = atof(token);
-//#if __SERIAL_DEBUG__
-//ConnectorUsb.Send("Field 2 is:");
-//ConnectorUsb.SendLine(command_data.vel_command);
-//#endif
+			if (m_token != NULL) {
+				command_data.vel_command = atof(m_token);
 			}
 		}		
 	}
 }
 
-void EthUDP::construct_data_msg(slidersystem::SystemStatus system_status, float data) {
+void EthUDP::construct_data_msg(slidersystem::SystemStatus* system_status, float data) {
 	/* Construct the message to send to the ROS2 Node on the host computer 
 	https://stackoverflow.com/questions/23966080/sending-struct-over-udp-c
 	*/
@@ -145,11 +136,11 @@ void EthUDP::construct_data_msg(slidersystem::SystemStatus system_status, float 
 	memset(&data_buf[0], 0, sizeof(data_buf));
 	
 	// Set data
-	sprintf(status_buf, "%d", system_status);
+	sprintf(status_buf, "%d", *system_status);
 	sprintf(data_buf, "%f", data);
 	
 	// Create c-str msg
-	strcpy(msg_buf, status_header);
+	strcat(msg_buf, "{\"status\":"); // TODO: For some reason status_header gets set to 0. Needs a debugger.
 	strcat(msg_buf, status_buf);
 	strcat(msg_buf, ",");
 	strcat(msg_buf, data_header);
@@ -158,7 +149,7 @@ void EthUDP::construct_data_msg(slidersystem::SystemStatus system_status, float 
 }
 
 
-void EthUDP::send_packet(slidersystem::SystemStatus system_status, float data) {
+void EthUDP::send_packet(slidersystem::SystemStatus* system_status, float data) {
 	/* Send a packet */
 	construct_data_msg(system_status, data);
 	udp.Connect(m_remote_ip, m_remote_port);
