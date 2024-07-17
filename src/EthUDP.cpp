@@ -125,7 +125,7 @@ void EthUDP::read_packet(slidersystem::DataInterface* command_interface) {
 	}
 }
 
-void EthUDP::construct_data_msg(slidersystem::SystemStatus* system_status, float data) {
+void EthUDP::construct_data_msg(const slidersystem::SystemStatus system_status, const float data) {
 	/* Construct the message to send to the ROS2 Node on the host computer 
 	https://stackoverflow.com/questions/23966080/sending-struct-over-udp-c
 	*/
@@ -135,7 +135,7 @@ void EthUDP::construct_data_msg(slidersystem::SystemStatus* system_status, float
 	memset(&data_buf[0], 0, sizeof(data_buf));
 	
 	// Set data
-	sprintf(status_buf, "%d", *system_status);
+	sprintf(status_buf, "%d", system_status);
 	sprintf(data_buf, "%f", data * -1); // x direction flipped in ros2 --> TODO: move all of the negative signs into one place! This shouldn't be here.
 	
 	// Create c-str msg
@@ -148,7 +148,7 @@ void EthUDP::construct_data_msg(slidersystem::SystemStatus* system_status, float
 }
 
 
-void EthUDP::send_packet(slidersystem::SystemStatus* system_status, float data) {
+void EthUDP::send_packet(const slidersystem::SystemStatus system_status, const float data) {
 	/* Send a packet */
 	construct_data_msg(system_status, data);
 	udp.Connect(m_remote_ip, m_remote_port);

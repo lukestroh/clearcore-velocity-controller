@@ -15,7 +15,6 @@
 extern volatile bool neg_lim_switch_flag;
 extern volatile bool pos_lim_switch_flag;
 extern volatile bool e_stop_flag;
-extern slidersystem::SystemStatus system_status;
 
 ClearPathMC::ClearPathMC() {}
 
@@ -138,17 +137,17 @@ float ClearPathMC::get_velocity() {
 	}
 }
 
-void ClearPathMC::set_velocity(int vel, slidersystem::SystemStatus* system_status) {
+void ClearPathMC::set_velocity(int vel) {
 	/* Set the target velocity of the ClearPath MC motor, according to maximum velocity limits. Commands are sent as positive RPM==positive direction (away from motor). In reality, positive RPM values drive the base to the direction of the motor. */
 	
 	// Check if standby or e-stop
-	if (*system_status==slidersystem::E_STOP || *system_status==slidersystem::SYSTEM_STANDBY) {
+	if (state_.system_status==slidersystem::E_STOP || state_.system_status==slidersystem::SYSTEM_STANDBY) {
 		target_velocity = 0;
 		return;
 	}
 	
 	// check the limit switch statuses
-	if (vel >= 0 && *system_status==slidersystem::POS_LIM){
+	if (vel >= 0 && state_.system_status==slidersystem::POS_LIM){
 		#if __SERIAL_DEBUG__
 		//switch_name = "positive";
 		ConnectorUsb.SendLine("Commanded velocity was stopped by the positive limit switch");
@@ -156,7 +155,7 @@ void ClearPathMC::set_velocity(int vel, slidersystem::SystemStatus* system_statu
 		target_velocity = 0;
 		return;
 	}
-	else if (vel <= 0 && *system_status==slidersystem::NEG_LIM){
+	else if (vel <= 0 && state_.system_status==slidersystem::NEG_LIM){
 		#if __SERIAL_DEBUG__
 		//switch_name = "negative";
 		ConnectorUsb.SendLine("Commanded velocity was stopped by the negative limit switch");
@@ -187,7 +186,7 @@ void ClearPathMC::set_velocity(int vel, slidersystem::SystemStatus* system_statu
 }
 
 void ClearPathMC::set_standby() {
-	set_velocity(0, &system_status);
+	set_velocity(0);
 }
 
 
@@ -275,24 +274,24 @@ void ClearPathMC::move_at_target_velocity() {
 
 void ClearPathMC::calibrate() {
 	/* Send the moving base to the motor-side (negative) limit switch */
-	while (system_status == slidersystem::SYSTEM_CALIBRATING) {
+	while (state_.system_status == slidersystem::SYSTEM_CALIBRATING) {
 		// TODO: receive message telling the calibration to be performed on the neg or pos limit switch		
 		if (neg_lim_switch_flag) {
-			set_velocity(0, &system_status);
+			set_velocity(0);
 			move_at_target_velocity();
 			neg_lim_switch_flag = false;
-			system_status = slidersystem::NEG_LIM;
+			state_.system_status = slidersystem::NEG_LIM;
 			return;
  		}
 		
 		// Exit calibration if E-stop
 		if (e_stop_flag) {
-			system_status = slidersystem::E_STOP;
+			state_.system_status = slidersystem::E_STOP;
 			return;
 		}
 
 		// During calibration, move toward negative limit switch
-		set_velocity(m_calibration_velocity, &system_status);
+		set_velocity(m_calibration_velocity);
 		move_at_target_velocity();
 		//_eth.send_packet(&system_status, target_velocity);
 	}

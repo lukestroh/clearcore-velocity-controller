@@ -6,6 +6,7 @@
  */ 
 #include "ClearCore.h"
 #include "EthernetUdp.h"
+#include "system.h"
 
 #ifndef ETHUDP_H_
 #define ETHUDP_H_
@@ -52,8 +53,8 @@ class EthUDP {
 		// Public methods
 		void begin();
 		void read_packet(slidersystem::DataInterface* command_interface);
-		void construct_data_msg(slidersystem::SystemStatus* system_status, float data);
-		void send_packet(slidersystem::SystemStatus* system_status, float data);
+		void construct_data_msg(const slidersystem::SystemStatus system_status, const float data);
+		void send_packet(const slidersystem::SystemStatus system_status, const float data);
 		
 };
 

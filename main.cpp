@@ -65,7 +65,6 @@
 volatile bool neg_lim_switch_flag = false;
 volatile bool pos_lim_switch_flag = false;
 volatile bool e_stop_flag = false;
-slidersystem::SystemStatus system_status = slidersystem::SYSTEM_STANDBY;
 constexpr uint8_t DEBOUNCE_TIME = 10;
 
 #if __SERIAL_DEBUG__
@@ -118,50 +117,47 @@ int main(void) {
 	EthUDP eth(local_ip, remote_ip);
 
 	ClearPathMC motor0(0);
-	
-	slidersystem::DataInterface command_interface;
-	slidersystem::DataInterface state_interface;
 
 	eth.begin();
 	motor0.begin();
-	eth.send_packet(&system_status, motor0.current_velocity);
+	eth.send_packet(motor0.state_.system_status, motor0.current_velocity);
 	
 	double curr_vel;
 	
 	// Main loop
 	while (true) {
-		// Read data from the ROS2 hardware interface.
-		eth.read_packet(&command_interface);
+		// Read data from the ROS2 hardware interface, store in motor command interface.
+		eth.read_packet(&motor0.command_);
 		
 		// If new data, parse for new motor control
 		if (eth.new_data) {
-			switch (command_interface.system_status) {
+			switch (motor0.command_.system_status) {
 				case slidersystem::E_STOP:
 					e_stop_flag = true;
 					break;
 				case slidersystem::SYSTEM_OK:
 					// Set the new target velocity
-					curr_vel = -1 * motor0.current_velocity; // negative sign is flipped	
-					if (command_interface.vel > curr_vel) { // TODO: I don't think the eth class should store the data?
-						motor0.set_velocity(curr_vel + 1, &system_status);
+					curr_vel = -1 * motor0.state_.vel; // negative sign is flipped	
+					if (motor0.command_.vel > curr_vel) { // TODO: I don't think the eth class should store the data?
+						motor0.set_velocity(curr_vel + 1);
 					}
-					else if (command_interface.vel < curr_vel) {
-						motor0.set_velocity(curr_vel - 1, &system_status);
+					else if (motor0.command_.vel < curr_vel) {
+						motor0.set_velocity(curr_vel - 1);
 					}
 					break;
 				case slidersystem::SYSTEM_STANDBY:
-					system_status = slidersystem::SYSTEM_STANDBY;
+					motor0.state_.system_status = slidersystem::SYSTEM_STANDBY;
 					motor0.set_standby();
 					break;
 				case slidersystem::SYSTEM_CALIBRATING:
 					// Poll the pin to see if the slider is already at the switch. // TODO: get emergency-emergency limit switches?
 					if (read_switch(&motor0.limit_switch_pin_neg, &neg_lim_switch_flag)) {
-						system_status = slidersystem::NEG_LIM;
+						motor0.state_.system_status = slidersystem::NEG_LIM;
 						break;
 					}
 					else {
-						system_status = slidersystem::SYSTEM_CALIBRATING;
-						eth.send_packet(&system_status, motor0.current_velocity);
+						motor0.state_.system_status = slidersystem::SYSTEM_CALIBRATING;
+						eth.send_packet(motor0.state_.system_status, motor0.current_velocity);
 						motor0.calibrate(); // blocking, runs until negative limit switch hit. TODO: change to either side
 						break;
 					}
@@ -176,29 +172,29 @@ int main(void) {
 		// Limit switch check
 		//if (read_switch(motor0.limit_switch_pin_neg, &neg_lim_switch_flag)) {
 		if (neg_lim_switch_flag) {
-			motor0.set_velocity(0, &system_status);
+			motor0.set_velocity(0);
 			motor0.move_at_target_velocity();
-			system_status = slidersystem::NEG_LIM;
+			motor0.state_.system_status = slidersystem::NEG_LIM;
 			neg_lim_switch_flag = false;
 		}
 		//if (read_switch(motor0.limit_switch_pin_pos, &pos_lim_switch_flag)) {
 		if (pos_lim_switch_flag) {
-			motor0.set_velocity(0, &system_status);
+			motor0.set_velocity(0);
 			motor0.move_at_target_velocity();
-			system_status = slidersystem::POS_LIM;
+			motor0.state_.system_status = slidersystem::POS_LIM;
 			pos_lim_switch_flag = false;
 		}
 
 		// E stop check
 		if (e_stop_flag) {
 			while (1) {
-				motor0.set_velocity(0, &system_status);
+				motor0.set_velocity(0);
 				motor0.move_at_target_velocity();
-				system_status = slidersystem::E_STOP;
+				motor0.state_.system_status = slidersystem::E_STOP;
 #if __SERIAL_DEBUG__
 				ConnectorUsb.SendLine("EMERGENCY STOP TRIGGERED. CHECK ALL HARDWARE.");
 #endif
-				eth.send_packet(&system_status, motor0.current_velocity);
+				eth.send_packet(motor0.state_.system_status, motor0.current_velocity);
 				Delay_ms(5000);
 			}
 		}
@@ -207,6 +203,6 @@ int main(void) {
 		motor0.move_at_target_velocity();
 		
 		// Send status, velocity data to the ROS2 node.
-		eth.send_packet(&system_status, motor0.current_velocity);
+		eth.send_packet(motor0.state_.system_status, motor0.current_velocity);
 	}
 }

@@ -60,7 +60,7 @@ class ClearPathMC {
 		void begin();
 		void get_position();
 		float get_velocity();
-		void set_velocity(int vel, slidersystem::SystemStatus* system_status);
+		void set_velocity(int vel);
 		void set_standby();
 		
 		void move_at_target_velocity();
