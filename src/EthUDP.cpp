@@ -6,7 +6,7 @@
  */ 
 
 #ifndef __SERIAL_DEBUG__
-#define __SERIAL_DEBUG__ 1
+#define __SERIAL_DEBUG__ 0
 #endif
 
 #include "EthUDP.h"
@@ -101,7 +101,7 @@ void EthUDP::begin(void) {
 }
 
 
-void EthUDP::read_packet(void) {
+void EthUDP::read_packet(slidersystem::DataInterface* command_interface) {
 	/* Look for a received packet, store in 'received_packet' if present */
 	uint16_t packet_size = udp.PacketParse();
 	if (packet_size > 0) {
@@ -114,12 +114,12 @@ void EthUDP::read_packet(void) {
 		m_token = strtok(received_packet_cstr, m_delimiter);
 		
 		if (m_token != NULL) {
-			command_data.status = static_cast<int8_t>(atoi(m_token));			
+			command_interface->system_status = static_cast<slidersystem::SystemStatus>(atoi(m_token));			
 			// Extract second field
 			m_token = strtok(NULL, m_delimiter);
 			//token_cstr = reinterpret_cast<char*>(token);
 			if (m_token != NULL) {
-				command_data.vel_command = atof(m_token);
+				command_interface->vel = atof(m_token);
 			}
 		}		
 	}
@@ -130,17 +130,16 @@ void EthUDP::construct_data_msg(slidersystem::SystemStatus* system_status, float
 	https://stackoverflow.com/questions/23966080/sending-struct-over-udp-c
 	*/
 	// Reset buffers
-	ConnectorUsb.SendLine(status_header);
 	memset(&msg_buf[0], 0, sizeof(msg_buf));
 	memset(&status_buf[0], 0, sizeof(status_buf));
 	memset(&data_buf[0], 0, sizeof(data_buf));
 	
 	// Set data
 	sprintf(status_buf, "%d", *system_status);
-	sprintf(data_buf, "%f", data);
+	sprintf(data_buf, "%f", data * -1); // x direction flipped in ros2 --> TODO: move all of the negative signs into one place! This shouldn't be here.
 	
 	// Create c-str msg
-	strcat(msg_buf, "{\"status\":"); // TODO: For some reason status_header gets set to 0. Needs a debugger.
+	strcat(msg_buf, "\{\"status\":"); // TODO: For some reason status_header gets set to 0. Needs a debugger.
 	strcat(msg_buf, status_buf);
 	strcat(msg_buf, ",");
 	strcat(msg_buf, data_header);

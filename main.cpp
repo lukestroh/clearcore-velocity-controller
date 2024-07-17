@@ -60,12 +60,15 @@
 #include "ClearPathMC.h"
 #include "system.h"
 
+
 // System state variables
 volatile bool neg_lim_switch_flag = false;
 volatile bool pos_lim_switch_flag = false;
 volatile bool e_stop_flag = false;
 slidersystem::SystemStatus system_status = slidersystem::SYSTEM_STANDBY;
+constexpr uint8_t DEBOUNCE_TIME = 10;
 
+#if __SERIAL_DEBUG__
 void set_up_serial(void) {
 	/* Set up Serial communication with computer for debugging */
 	ConnectorUsb.Mode(Connector::USB_CDC);
@@ -77,21 +80,25 @@ void set_up_serial(void) {
 		continue;
 	}
 }
+#endif // __SERIAL_DEBUG__
 
-bool read_switch(DigitalIn& switch_pin, volatile bool* interrupt_flag) {
+bool read_switch(DigitalIn* switch_pin, volatile bool* p_interrupt_flag) {
 	/* Returns true if the interrupt has been triggered */
-	if (*interrupt_flag) {
-		bool reading = switch_pin.State();
+	if (*p_interrupt_flag) {
+		bool reading = switch_pin->State();
+		static unsigned long prev_time;
 		static bool change_pending = false;
 		if (reading) {
 			change_pending = true;
 		}
 		if (!reading && change_pending) {
-			*interrupt_flag = false;
-			change_pending = false;
-			return true;
+			if (Milliseconds() - prev_time > DEBOUNCE_TIME) {
+				*p_interrupt_flag = false;
+				change_pending = false;
+				return true;
+			}
 		}
-	}
+	}	
 	return false;
 }
 
@@ -101,71 +108,99 @@ int main(void) {
 	set_up_serial();
 #endif
 
-	// Set static addresses for the ClearCore Controller
-	IpAddress local_ip = IpAddress(169, 254, 97, 177);
-	IpAddress remote_ip = IpAddress(169, 254, 57, 209);
+	// Set static address for the ClearCore Controller
+	//IpAddress local_ip = IpAddress(169, 254, 97, 177);
+	IpAddress local_ip(169, 254, 97, 177);
+	// Set remote (host) computer address
+	//IpAddress remote_ip = IpAddress(169, 254, 57, 209);
+	IpAddress remote_ip(169, 254, 57, 209);
 
 	EthUDP eth(local_ip, remote_ip);
 
 	ClearPathMC motor0(0);
+	
+	slidersystem::DataInterface command_interface;
+	slidersystem::DataInterface state_interface;
 
 	eth.begin();
 	motor0.begin();
 	eth.send_packet(&system_status, motor0.current_velocity);
 	
+	double curr_vel;
+	
 	// Main loop
 	while (true) {
 		// Read data from the ROS2 hardware interface.
-		eth.read_packet();
+		eth.read_packet(&command_interface);
 		
 		// If new data, parse for new motor control
 		if (eth.new_data) {
-			switch (eth.command_data.status) {
-				case slidersystem::SYSTEM_OK:
-					// Set the new target velocity
-					system_status = slidersystem::SYSTEM_OK;
-					motor0.set_velocity(eth.command_data.vel_command);
-					break;
-				case slidersystem::SYSTEM_STANDBY:
-					motor0.set_velocity(0);
-					system_status = slidersystem::SYSTEM_STANDBY;
-					break;
-				case slidersystem::SYSTEM_CALIBRATING:
-					system_status = slidersystem::SYSTEM_CALIBRATING;
-					eth.send_packet(&system_status, motor0.current_velocity);
-					motor0.calibrate();
-					eth.send_packet(&system_status, motor0.current_velocity);
-					continue;
+			switch (command_interface.system_status) {
 				case slidersystem::E_STOP:
 					e_stop_flag = true;
 					break;
-				
+				case slidersystem::SYSTEM_OK:
+					// Set the new target velocity
+					curr_vel = -1 * motor0.current_velocity; // negative sign is flipped	
+					if (command_interface.vel > curr_vel) { // TODO: I don't think the eth class should store the data?
+						motor0.set_velocity(curr_vel + 1, &system_status);
+					}
+					else if (command_interface.vel < curr_vel) {
+						motor0.set_velocity(curr_vel - 1, &system_status);
+					}
+					break;
+				case slidersystem::SYSTEM_STANDBY:
+					system_status = slidersystem::SYSTEM_STANDBY;
+					motor0.set_standby();
+					break;
+				case slidersystem::SYSTEM_CALIBRATING:
+					// Poll the pin to see if the slider is already at the switch. // TODO: get emergency-emergency limit switches?
+					if (read_switch(&motor0.limit_switch_pin_neg, &neg_lim_switch_flag)) {
+						system_status = slidersystem::NEG_LIM;
+						break;
+					}
+					else {
+						system_status = slidersystem::SYSTEM_CALIBRATING;
+						eth.send_packet(&system_status, motor0.current_velocity);
+						motor0.calibrate(); // blocking, runs until negative limit switch hit. TODO: change to either side
+						break;
+					}
+				case slidersystem::NEG_LIM:
+					break;
+				case slidersystem::POS_LIM:
+					break;
 			}
 			eth.new_data = false;
 		}
 		
 		// Limit switch check
-		if (read_switch(motor0.limit_switch_pin_neg, &neg_lim_switch_flag)) {
-			motor0.set_velocity(0);
-			motor0.move_at_target_velocity(true);
+		//if (read_switch(motor0.limit_switch_pin_neg, &neg_lim_switch_flag)) {
+		if (neg_lim_switch_flag) {
+			motor0.set_velocity(0, &system_status);
+			motor0.move_at_target_velocity();
 			system_status = slidersystem::NEG_LIM;
+			neg_lim_switch_flag = false;
 		}
-		if (read_switch(motor0.limit_switch_pin_pos, &pos_lim_switch_flag)) {
-			motor0.set_velocity(0);
-			motor0.move_at_target_velocity(true);
+		//if (read_switch(motor0.limit_switch_pin_pos, &pos_lim_switch_flag)) {
+		if (pos_lim_switch_flag) {
+			motor0.set_velocity(0, &system_status);
+			motor0.move_at_target_velocity();
 			system_status = slidersystem::POS_LIM;
+			pos_lim_switch_flag = false;
 		}
 
 		// E stop check
-		while (e_stop_flag) {
-			motor0.set_velocity(0);
-			motor0.move_at_target_velocity(true);
-			system_status = slidersystem::E_STOP;
+		if (e_stop_flag) {
+			while (1) {
+				motor0.set_velocity(0, &system_status);
+				motor0.move_at_target_velocity();
+				system_status = slidersystem::E_STOP;
 #if __SERIAL_DEBUG__
-			ConnectorUsb.SendLine("EMERGENCY STOP TRIGGERED. CHECK ALL HARDWARE.");
+				ConnectorUsb.SendLine("EMERGENCY STOP TRIGGERED. CHECK ALL HARDWARE.");
 #endif
-			eth.send_packet(&system_status, motor0.current_velocity);
-			Delay_ms(5000);
+				eth.send_packet(&system_status, motor0.current_velocity);
+				Delay_ms(5000);
+			}
 		}
 		
 		// Move to target velocity (blocking)

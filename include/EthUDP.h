@@ -6,15 +6,9 @@
  */ 
 #include "ClearCore.h"
 #include "EthernetUdp.h"
-#include "system.h"
 
 #ifndef ETHUDP_H_
 #define ETHUDP_H_
-
-struct CommandData {
-	int8_t status;
-	int32_t vel_command;
-};
 
 class EthUDP {
 	private:
@@ -35,7 +29,7 @@ class EthUDP {
 		// Send data attributes
 		char status_buf[2];
 		char data_buf[10];
-		const char status_header[11] = "{\"status\":";
+		const char status_header[11] = "\{\"status\":";
 		const char data_header[13] = "\"servo_rpm\":";
 		const char footer[2] = "}";			
 	
@@ -54,13 +48,10 @@ class EthUDP {
 		EthUDP(IpAddress _local_ip, IpAddress _remote_ip);
 		EthUDP(IpAddress _local_ip, int _local_port, IpAddress _remote_ip, int _remote_port);
 		~EthUDP();
-		
-		// CommandData
-		CommandData command_data;	
-		
+	
 		// Public methods
 		void begin();
-		void read_packet();
+		void read_packet(slidersystem::DataInterface* command_interface);
 		void construct_data_msg(slidersystem::SystemStatus* system_status, float data);
 		void send_packet(slidersystem::SystemStatus* system_status, float data);
 		
