@@ -135,7 +135,7 @@ int main(void) {
 				case slidersystem::E_STOP:
 					e_stop_flag = true;
 					break;
-				case slidersystem::SYSTEM_OK:
+				case slidersystem::SYSTEM_OK: case slidersystem::NEG_LIM: case slidersystem::POS_LIM:
 					// Set the new target velocity
 					curr_vel = -1 * motor0.state_.vel; // negative sign is flipped	
 					if (motor0.command_.vel > curr_vel) { // TODO: I don't think the eth class should store the data?
@@ -161,13 +161,15 @@ int main(void) {
 						motor0.calibrate(); // blocking, runs until negative limit switch hit. TODO: change to either side
 						break;
 					}
-				case slidersystem::NEG_LIM:
-					break;
-				case slidersystem::POS_LIM:
-					break;
+				//case slidersystem::NEG_LIM:
+					//break;
+				//case slidersystem::POS_LIM:
+					//break;
 			}
 			eth.new_data = false;
 		}
+		
+		/* TODO: Still need to do some polling of the limit switches somewhere in here? */
 		
 		// Limit switch check
 		//if (read_switch(motor0.limit_switch_pin_neg, &neg_lim_switch_flag)) {
