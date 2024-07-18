@@ -52,7 +52,7 @@
  */
 
 #ifndef __SERIAL_DEBUG__
-#define __SERIAL_DEBUG__ 1
+#define __SERIAL_DEBUG__ 0
 #endif
 
 #include "ClearCore.h"
@@ -101,6 +101,10 @@ bool read_switch(DigitalIn* switch_pin, volatile bool* p_interrupt_flag) {
 	return false;
 }
 
+bool poll_switch(DigitalIn* switch_pin) {
+	return switch_pin->State();
+}
+
 
 int main(void) {
 #if __SERIAL_DEBUG__
@@ -120,7 +124,7 @@ int main(void) {
 
 	eth.begin();
 	motor0.begin();
-	eth.send_packet(motor0.state_.system_status, motor0.current_velocity);
+	eth.send_packet(&motor0.state_);
 	
 	double curr_vel;
 	
@@ -157,7 +161,7 @@ int main(void) {
 					}
 					else {
 						motor0.state_.system_status = slidersystem::SYSTEM_CALIBRATING;
-						eth.send_packet(motor0.state_.system_status, motor0.current_velocity);
+						eth.send_packet(&motor0.state_);
 						motor0.calibrate(); // blocking, runs until negative limit switch hit. TODO: change to either side
 						break;
 					}
@@ -196,15 +200,25 @@ int main(void) {
 #if __SERIAL_DEBUG__
 				ConnectorUsb.SendLine("EMERGENCY STOP TRIGGERED. CHECK ALL HARDWARE.");
 #endif
-				eth.send_packet(motor0.state_.system_status, motor0.current_velocity);
+				eth.send_packet(&motor0.state_);
 				Delay_ms(5000);
 			}
+		}
+		
+		if (!poll_switch(&motor0.limit_switch_pin_neg)) {        // This is now working as it should?? Can it be?
+			motor0.state_.system_status = slidersystem::NEG_LIM;
+		}
+		else if (!poll_switch(&motor0.limit_switch_pin_pos)) {
+			motor0.state_.system_status = slidersystem::POS_LIM;
+		}
+		else {
+			motor0.state_.system_status = slidersystem::SYSTEM_OK;
 		}
 		
 		// Move to target velocity (blocking)
 		motor0.move_at_target_velocity();
 		
 		// Send status, velocity data to the ROS2 node.
-		eth.send_packet(motor0.state_.system_status, motor0.current_velocity);
+		eth.send_packet(&motor0.state_);
 	}
 }

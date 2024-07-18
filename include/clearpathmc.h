@@ -55,7 +55,6 @@ class ClearPathMC {
 		slidersystem::DataInterface state_;
 		
 		double target_velocity = 0.0;
-		double current_velocity = 0.0;
 		
 		void begin();
 		void get_position();

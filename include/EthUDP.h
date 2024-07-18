@@ -53,8 +53,8 @@ class EthUDP {
 		// Public methods
 		void begin();
 		void read_packet(slidersystem::DataInterface* command_interface);
-		void construct_data_msg(const slidersystem::SystemStatus system_status, const float data);
-		void send_packet(const slidersystem::SystemStatus system_status, const float data);
+		void construct_data_msg(slidersystem::DataInterface* state);
+		void send_packet(slidersystem::DataInterface* state);
 		
 };
 

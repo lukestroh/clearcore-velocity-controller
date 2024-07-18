@@ -51,8 +51,8 @@ void ClearPathMC::begin() {
 	ConnectorUsb.SendLine("Motor enabled.");
 #endif
 	// Enable pin interrupts TODO: This is totally in the wrong place, there should be a system manager file, would also clean up main.cpp
-	limit_switch_pin_neg.InterruptHandlerSet(&neg_lim_switch_callback, InputManager::LOW, true); // What if we did LOW... would it then trigger all of the time, letting us use 'read_interrupt'?
-	limit_switch_pin_pos.InterruptHandlerSet(&pos_lim_switch_callback, InputManager::LOW, true);
+	limit_switch_pin_neg.InterruptHandlerSet(&neg_lim_switch_callback, InputManager::FALLING, true); // What if we did LOW... would it then trigger all of the time, letting us use 'read_interrupt'?
+	limit_switch_pin_pos.InterruptHandlerSet(&pos_lim_switch_callback, InputManager::FALLING, true);
 	emergency_stop_pin.InterruptHandlerSet(&emergency_stop_callback, InputManager::RISING, true);
 	
 	// Wait for HLFB
@@ -180,7 +180,7 @@ void ClearPathMC::set_velocity(int vel) {
 	ConnectorUsb.Send("target vel: ");
 	ConnectorUsb.SendLine(target_velocity);
 	ConnectorUsb.Send("Curr vel: ");
-	ConnectorUsb.SendLine(current_velocity);
+	ConnectorUsb.SendLine(state_.vel);
 	//Delay_ms(1000);
 #endif
 }
@@ -196,22 +196,11 @@ void ClearPathMC::move_at_target_velocity() {
 	// Check motor status
 	check_for_faults();
 	
-	// TODO: Handle this limit elsewhere?
-	// If at negative limit switch, don't let target velocity be negative
-	if (neg_lim_switch_flag && target_velocity < 0) {
-		target_velocity = 0;
-	}
-	
-	// If at positive limit switch, don't let target velocity be positive
-	if (pos_lim_switch_flag && target_velocity > 0) {
-		target_velocity = 0;
-	}
-	
 	// Determine which order the quadrature must be sent by determining if the
 	// new velocity is greater or less than the previously commanded velocity
 	// If greater, Input A begins the quadrature. If less, Input B begins the
 	// quadrature.
-	int32_t curr_velocity_rounded = round(current_velocity / velocity_resolution);
+	int32_t curr_velocity_rounded = round(state_.vel / velocity_resolution);
 	int32_t target_velocity_rounded = round(target_velocity / velocity_resolution);
 	int32_t velocity_difference = labs(target_velocity_rounded - curr_velocity_rounded);
 	
@@ -225,7 +214,7 @@ void ClearPathMC::move_at_target_velocity() {
 		if (e_stop_flag || neg_lim_switch_flag || pos_lim_switch_flag) {
 			target_velocity = 0;
 		}
-		if (target_velocity > current_velocity) {
+		if (target_velocity > state_.vel) {
 			// Toggle Input A to begin the quadrature signal
 			motor.MotorInAState(true);
 			// Command a 5 microsecond delay to ensure proper signal timing
@@ -250,7 +239,7 @@ void ClearPathMC::move_at_target_velocity() {
 	}
 	
 	// Update the current velocity
-	current_velocity = target_velocity;
+	state_.vel = target_velocity;
 		
 	// Wait for High-Level Feedback (HLFB) to assert (signaling if the motor has reached
 	// its target velocity)
