@@ -125,9 +125,7 @@ int main(void) {
 	eth.begin();
 	motor0.begin();
 	eth.send_packet(&motor0.state_);
-	
-	double curr_vel;
-	
+		
 	// Main loop
 	while (true) {
 		// Read data from the ROS2 hardware interface, store in motor command interface.
@@ -141,12 +139,12 @@ int main(void) {
 					break;
 				case slidersystem::SYSTEM_OK: // set_velocity() deals with case, but with state_. Is it worth doing an additional check here? Looks like it's faster...
 					// Set the new target velocity
-					curr_vel = -1 * motor0.state_.vel; // negative sign is flipped	
-					if (motor0.command_.vel > curr_vel) { // TODO: I don't think the eth class should store the data?
-						motor0.set_velocity(curr_vel + 1);
+					//curr_vel = -1 * motor0.state_.vel; // negative sign is flipped	
+					if (motor0.command_.vel > motor0.state_.vel) {
+						motor0.set_velocity(motor0.state_.vel + 1);
 					}
-					else if (motor0.command_.vel < curr_vel) {
-						motor0.set_velocity(curr_vel - 1);
+					else if (motor0.command_.vel < motor0.state_.vel) {
+						motor0.set_velocity(motor0.state_.vel - 1);
 					}
 					break;
 				case slidersystem::SYSTEM_STANDBY:
@@ -155,35 +153,32 @@ int main(void) {
 					break;
 				case slidersystem::SYSTEM_CALIBRATING:
 					// Poll the pin to see if the slider is already at the switch. // TODO: get emergency-emergency limit switches?
-					if (read_switch(&motor0.limit_switch_pin_neg, &neg_lim_switch_flag)) {
+					if (!poll_switch(&motor0.limit_switch_pin_neg)) {
 						motor0.state_.system_status = slidersystem::NEG_LIM;
-						break;
 					}
 					else {
 						motor0.state_.system_status = slidersystem::SYSTEM_CALIBRATING;
 						eth.send_packet(&motor0.state_);
 						motor0.calibrate(); // blocking, runs until negative limit switch hit. TODO: change to either side
-						break;
 					}
+					break;
 				// check the limit switch statuses
 				case slidersystem::NEG_LIM:
-					curr_vel = -1 * motor0.state_.vel; // negative sign is flipped
-					if (curr_vel <= 0){
+					//curr_vel = -1 * motor0.state_.vel; // negative sign is flipped
+					if (motor0.state_.vel <= 0){
 						#if __SERIAL_DEBUG__
 						ConnectorUsb.SendLine("Commanded velocity was stopped by the negative limit switch");
 						#endif
 						motor0.set_velocity(0);
-						return;
 					}
 					break;
 				case slidersystem::POS_LIM:
-					curr_vel = -1 * motor0.state_.vel; // negative sign is flipped
-					if (curr_vel >= 0){
+					//curr_vel = -1 * motor0.state_.vel; // negative sign is flipped
+					if (motor0.state_.vel >= 0){
 						#if __SERIAL_DEBUG__
 						ConnectorUsb.SendLine("Commanded velocity was stopped by the positive limit switch");
 						#endif
 						motor0.set_velocity(0);
-						return;
 					}
 					break;
 			}
@@ -191,14 +186,12 @@ int main(void) {
 		}
 		
 		// Limit switch check
-		//if (read_switch(motor0.limit_switch_pin_neg, &neg_lim_switch_flag)) {
 		if (neg_lim_switch_flag) {
 			motor0.set_velocity(0);
 			motor0.move_at_target_velocity();
 			motor0.state_.system_status = slidersystem::NEG_LIM;
 			neg_lim_switch_flag = false;
 		}
-		//if (read_switch(motor0.limit_switch_pin_pos, &pos_lim_switch_flag)) {
 		if (pos_lim_switch_flag) {
 			motor0.set_velocity(0);
 			motor0.move_at_target_velocity();
@@ -216,7 +209,7 @@ int main(void) {
 				ConnectorUsb.SendLine("EMERGENCY STOP TRIGGERED. CHECK ALL HARDWARE.");
 #endif
 				eth.send_packet(&motor0.state_);
-				return;
+				return 255;
 				//Delay_ms(5000);
 			}
 		}

@@ -190,6 +190,7 @@ void ClearPathMC::set_standby() {
 
 void ClearPathMC::move_at_target_velocity() {
 	/* Move the motor at the set target velocity */
+	double current_motor_velocity = -1 * state_.vel;
 	
 	// Check motor status
 	check_for_faults();
@@ -198,7 +199,7 @@ void ClearPathMC::move_at_target_velocity() {
 	// new velocity is greater or less than the previously commanded velocity
 	// If greater, Input A begins the quadrature. If less, Input B begins the
 	// quadrature.
-	int32_t curr_velocity_rounded = round(state_.vel / velocity_resolution);
+	int32_t curr_velocity_rounded = round(current_motor_velocity / velocity_resolution);
 	int32_t target_velocity_rounded = round(target_velocity / velocity_resolution);
 	int32_t velocity_difference = labs(target_velocity_rounded - curr_velocity_rounded);
 	
@@ -212,7 +213,7 @@ void ClearPathMC::move_at_target_velocity() {
 		if (e_stop_flag || neg_lim_switch_flag || pos_lim_switch_flag) {
 			target_velocity = 0;
 		}
-		if (target_velocity > state_.vel) {
+		if (target_velocity > current_motor_velocity) {
 			// Toggle Input A to begin the quadrature signal
 			motor.MotorInAState(true);
 			// Command a 5 microsecond delay to ensure proper signal timing
@@ -237,7 +238,7 @@ void ClearPathMC::move_at_target_velocity() {
 	}
 	
 	// Update the current velocity
-	state_.vel = target_velocity;
+	state_.vel = -1 * target_velocity;
 		
 	// Wait for High-Level Feedback (HLFB) to assert (signaling if the motor has reached
 	// its target velocity)

@@ -146,9 +146,9 @@ void EthUDP::construct_data_msg(slidersystem::DataInterface* state) {
 	sprintf(data_buf, "%f", state->vel * -1); // x direction flipped in ros2 --> TODO: move all of the negative signs into one place! This shouldn't be here.
 	
 	// Create c-str msg
-	strcat(msg_buf, "\{\"status\":"); // TODO: For some reason status_header gets set to 0. Needs a debugger.
+	strcat(msg_buf, status_header); // TODO: For some reason status_header gets set to 0. Needs a debugger.
 	strcat(msg_buf, status_buf);
-	strcat(msg_buf, ",");
+	strcat(msg_buf, m_delimiter);
 	strcat(msg_buf, data_header);
 	strcat(msg_buf, data_buf);
 	strcat(msg_buf, footer);

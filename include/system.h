@@ -13,10 +13,6 @@
 #ifndef __SYSTEM_H__
 #define __SYSTEM_H__
 
-#ifndef __SERIAL_DEBUG__
-#define __SERIAL_DEBUG__ 0
-#endif
-
 namespace slidersystem
 {
 	enum SystemStatus {
