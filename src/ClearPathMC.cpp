@@ -147,22 +147,20 @@ void ClearPathMC::set_velocity(int vel) {
 	}
 	
 	// check the limit switch statuses
-	if (vel >= 0 && state_.system_status==slidersystem::POS_LIM){
+	if (vel <= 0 && state_.system_status==slidersystem::NEG_LIM){
 		#if __SERIAL_DEBUG__
-		//switch_name = "positive";
-		ConnectorUsb.SendLine("Commanded velocity was stopped by the positive limit switch");
-		#endif
-		target_velocity = 0;
-		return;
-	}
-	else if (vel <= 0 && state_.system_status==slidersystem::NEG_LIM){
-		#if __SERIAL_DEBUG__
-		//switch_name = "negative";
 		ConnectorUsb.SendLine("Commanded velocity was stopped by the negative limit switch");
 		#endif
 		target_velocity = 0;
 		return;
 	}
+	if (vel >= 0 && state_.system_status==slidersystem::POS_LIM){
+		#if __SERIAL_DEBUG__
+		ConnectorUsb.SendLine("Commanded velocity was stopped by the positive limit switch");
+		#endif
+		target_velocity = 0;
+		return;
+	} 
 	
 	// Correct command to speed limit
 	if (vel > m_max_velocity) {

@@ -29,7 +29,7 @@ namespace slidersystem
 	};
 	
 	struct DataInterface {
-		slidersystem::SystemStatus system_status = SystemStatus::SYSTEM_OK;
+		SystemStatus system_status = SystemStatus::SYSTEM_OK;
 		double vel = 0.0;
 	};
 

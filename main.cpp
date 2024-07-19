@@ -139,7 +139,7 @@ int main(void) {
 				case slidersystem::E_STOP:
 					e_stop_flag = true;
 					break;
-				case slidersystem::SYSTEM_OK: case slidersystem::NEG_LIM: case slidersystem::POS_LIM:
+				case slidersystem::SYSTEM_OK: // set_velocity() deals with case, but with state_. Is it worth doing an additional check here? Looks like it's faster...
 					// Set the new target velocity
 					curr_vel = -1 * motor0.state_.vel; // negative sign is flipped	
 					if (motor0.command_.vel > curr_vel) { // TODO: I don't think the eth class should store the data?
@@ -165,15 +165,30 @@ int main(void) {
 						motor0.calibrate(); // blocking, runs until negative limit switch hit. TODO: change to either side
 						break;
 					}
-				//case slidersystem::NEG_LIM:
-					//break;
-				//case slidersystem::POS_LIM:
-					//break;
+				// check the limit switch statuses
+				case slidersystem::NEG_LIM:
+					curr_vel = -1 * motor0.state_.vel; // negative sign is flipped
+					if (curr_vel <= 0){
+						#if __SERIAL_DEBUG__
+						ConnectorUsb.SendLine("Commanded velocity was stopped by the negative limit switch");
+						#endif
+						motor0.set_velocity(0);
+						return;
+					}
+					break;
+				case slidersystem::POS_LIM:
+					curr_vel = -1 * motor0.state_.vel; // negative sign is flipped
+					if (curr_vel >= 0){
+						#if __SERIAL_DEBUG__
+						ConnectorUsb.SendLine("Commanded velocity was stopped by the positive limit switch");
+						#endif
+						motor0.set_velocity(0);
+						return;
+					}
+					break;
 			}
 			eth.new_data = false;
 		}
-		
-		/* TODO: Still need to do some polling of the limit switches somewhere in here? */
 		
 		// Limit switch check
 		//if (read_switch(motor0.limit_switch_pin_neg, &neg_lim_switch_flag)) {
@@ -201,7 +216,8 @@ int main(void) {
 				ConnectorUsb.SendLine("EMERGENCY STOP TRIGGERED. CHECK ALL HARDWARE.");
 #endif
 				eth.send_packet(&motor0.state_);
-				Delay_ms(5000);
+				return;
+				//Delay_ms(5000);
 			}
 		}
 		
