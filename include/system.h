@@ -3,6 +3,10 @@
  *
  * Created: 1/5/2024 10:07:56 PM
  *  Author: Luke Strohbehn
+ * 
+ * 
+ *
+ * NOTE: If modifying this system state, please be sure to update the corresponding file in linear_slider_hardware_interface
  */ 
 
 
@@ -18,6 +22,11 @@ namespace slidersystem
 		E_STOP,
 		NEG_LIM,
 		POS_LIM,
+	};
+	
+	struct DataInterface {
+		SystemStatus system_status = SystemStatus::SYSTEM_OK;
+		double vel = 0.0;
 	};
 
 } // namespace system

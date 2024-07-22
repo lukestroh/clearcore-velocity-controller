@@ -11,11 +11,6 @@
 #ifndef ETHUDP_H_
 #define ETHUDP_H_
 
-struct CommandData {
-	int8_t status;
-	int32_t vel_command;
-};
-
 class EthUDP {
 	private:
 		// Local IP address, port
@@ -28,16 +23,16 @@ class EthUDP {
 		
 		// Read data attributes
 		char* m_token;
-		const char m_delimiter[2] = ",";
+		const char* m_delimiter = ",";
 		bool m_using_dhcp = false;
 		const uint8_t MAX_PACKET_LENGTH = 128; // Maximum number of characters to receive from an incoming packet
 		
 		// Send data attributes
 		char status_buf[2];
 		char data_buf[10];
-		const char status_header[11] = "{\"status\":";
-		const char data_header[13] = "\"servo_rpm\":";
-		const char footer[2] = "}";			
+		const char* status_header = "\{\"status\":";
+		const char* data_header = "\"servo_rpm\":";
+		const char* footer = "}";			
 	
 	public:
 		// Data buffer
@@ -54,15 +49,12 @@ class EthUDP {
 		EthUDP(IpAddress _local_ip, IpAddress _remote_ip);
 		EthUDP(IpAddress _local_ip, int _local_port, IpAddress _remote_ip, int _remote_port);
 		~EthUDP();
-		
-		// CommandData
-		CommandData command_data;	
-		
+	
 		// Public methods
 		void begin();
-		void read_packet();
-		void construct_data_msg(slidersystem::SystemStatus* system_status, float data);
-		void send_packet(slidersystem::SystemStatus* system_status, float data);
+		void read_packet(slidersystem::DataInterface* command_interface);
+		void construct_data_msg(slidersystem::DataInterface* state);
+		void send_packet(slidersystem::DataInterface* state);
 		
 };
 
