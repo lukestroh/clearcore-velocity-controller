@@ -107,25 +107,19 @@ void EthUDP::read_packet(slidersystem::DataInterface* command_interface) {
 	if (packet_size > 0) {
 		udp.PacketRead(received_packet, MAX_PACKET_LENGTH);
 		new_data = true;
-		
+				
 		// Parse data from the received packet
 		// Extract first field
 		char* received_packet_cstr = reinterpret_cast<char*>(received_packet);
 		m_token = strtok(received_packet_cstr, m_delimiter);
+
 		
 		if (m_token != NULL) {
-					//#ifdef __SERIAL_DEBUG__
-					//ConnectorUsb.SendLine(m_token);
-					//#endif
 			command_interface->system_status = static_cast<slidersystem::SystemStatus>(atoi(m_token));			
 			// Extract second field
 			m_token = strtok(NULL, m_delimiter);
 			//token_cstr = reinterpret_cast<char*>(token);
 			if (m_token != NULL) {
-				//#ifdef __SERIAL_DEBUG__
-				//ConnectorUsb.SendLine("got far");
-				//ConnectorUsb.SendLine(m_token);
-				//#endif
 				command_interface->vel = atof(m_token);
 			}
 		}		
@@ -154,7 +148,7 @@ void EthUDP::construct_data_msg(slidersystem::DataInterface* state) {
 	strcat(msg_buf, footer);
 	
 	#ifdef __SERIAL_DEBUG__
-	ConnectorUsb.SendLine(msg_buf);
+	//ConnectorUsb.SendLine(msg_buf);
 	//ConnectorUsb.SendLine(motor0.command_.system_status);
 	//ConnectorUsb.SendLine(motor0.command_.vel);
 	//ConnectorUsb.SendLine(motor0.state_.vel);

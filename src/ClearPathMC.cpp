@@ -16,14 +16,16 @@ extern volatile bool neg_lim_switch_flag;
 extern volatile bool pos_lim_switch_flag;
 extern volatile bool e_stop_flag;
 
-ClearPathMC::ClearPathMC() {}
+ClearPathMC::ClearPathMC() {
+	state_.system_status = slidersystem::SYSTEM_STANDBY;
+	command_.system_status = slidersystem::SYSTEM_STANDBY;
+}
 
 
 ClearPathMC::ClearPathMC(int _id): 
 	motor_id(_id) 
 {
-	state_.system_status = slidersystem::SYSTEM_STANDBY;
-	command_.system_status = slidersystem::SYSTEM_STANDBY;
+	ClearPathMC();
 }
 
 

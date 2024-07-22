@@ -36,7 +36,7 @@
 	*      Frequency" dropdown, and hit the OK button).
 	*
 	* LIMIT SWITCHES:
-	* 1. Limit switches should be connected to the I0 and I1 inputs on the controller.
+	* 1. Limit switches should be connected to the DI8 and DI7 inputs on the controller.
 	*
 	*
 	* EMERGENCY STOP:
@@ -124,22 +124,37 @@ int main(void) {
 
 	eth.begin();
 	motor0.begin();
+	if (poll_switch(&motor0.emergency_stop_pin)) {
+		motor0.state_.system_status = slidersystem::E_STOP;
+		e_stop_flag = true;
+	}
 	eth.send_packet(&motor0.state_);
 		
 	// Main loop
 	while (true) {
 		// Read data from the ROS2 hardware interface, store in motor command interface.
 		eth.read_packet(&motor0.command_);
-		
+				
 		// If new data, parse for new motor control
 		if (eth.new_data) {
+			#if __SERIAL_DEBUG__
+			ConnectorUsb.Send("Command - status: ");
+			ConnectorUsb.Send(motor0.command_.system_status);
+			ConnectorUsb.Send(" rpm: ");
+			ConnectorUsb.SendLine(motor0.command_.vel);
+			
+			ConnectorUsb.Send("State - status: ");
+			ConnectorUsb.Send(motor0.state_.system_status);
+			ConnectorUsb.Send(" rpm: ");
+			ConnectorUsb.SendLine(motor0.state_.vel);
+			#endif
 			switch (motor0.command_.system_status) {
 				case slidersystem::E_STOP:
 					e_stop_flag = true;
 					break;
 				case slidersystem::SYSTEM_OK: // set_velocity() deals with case, but with state_. Is it worth doing an additional check here? Looks like it's faster...
 					// Set the new target velocity
-					//curr_vel = -1 * motor0.state_.vel; // negative sign is flipped	
+					motor0.state_.system_status = slidersystem::SYSTEM_OK; // TODO: does this defeat the point of having a standby check in the set_velocity function?
 					if (motor0.command_.vel > motor0.state_.vel) {
 						motor0.set_velocity(motor0.state_.vel + 1);
 					}
@@ -209,8 +224,8 @@ int main(void) {
 				ConnectorUsb.SendLine("EMERGENCY STOP TRIGGERED. CHECK ALL HARDWARE.");
 #endif
 				eth.send_packet(&motor0.state_);
-				return 255;
-				//Delay_ms(5000);
+				//return 255;
+				Delay_ms(5000);
 			}
 		}
 		
@@ -220,8 +235,11 @@ int main(void) {
 		else if (!poll_switch(&motor0.limit_switch_pin_pos)) {
 			motor0.state_.system_status = slidersystem::POS_LIM;
 		}
-		else {
-			motor0.state_.system_status = slidersystem::SYSTEM_OK;
+		
+		// Poll E-stop so user knows to properly reset the switch
+		if (poll_switch(&motor0.emergency_stop_pin)) {
+			motor0.state_.system_status = slidersystem::E_STOP;
+			e_stop_flag = true;
 		}
 		
 		// Move to target velocity (blocking)

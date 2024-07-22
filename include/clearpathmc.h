@@ -19,10 +19,7 @@
 #define HANDLE_MOTOR_FAULTS (0)
 
 class ClearPathMC {	
-	private:	
-		// Emergency stop pin
-		DigitalIn& emergency_stop_pin = ConnectorDI6;
-		
+	private:		
 		// Motor
 		MotorDriver& motor = ConnectorM0;
 		
@@ -49,6 +46,8 @@ class ClearPathMC {
 		// Limit switch pins
 		DigitalIn& limit_switch_pin_neg = ConnectorDI7;
 		DigitalIn& limit_switch_pin_pos = ConnectorDI8;
+		// Emergency stop pin
+		DigitalIn& emergency_stop_pin = ConnectorDI6;
 		
 		// Motor state structs
 		slidersystem::DataInterface command_;

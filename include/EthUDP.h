@@ -30,7 +30,7 @@ class EthUDP {
 		// Send data attributes
 		char status_buf[2];
 		char data_buf[10];
-		const char* status_header = "\{\"status\":";
+		const char* status_header = "{\"status\":";
 		const char* data_header = "\"servo_rpm\":";
 		const char* footer = "}";			
 	
