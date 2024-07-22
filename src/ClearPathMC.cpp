@@ -22,7 +22,8 @@ ClearPathMC::ClearPathMC() {}
 ClearPathMC::ClearPathMC(int _id): 
 	motor_id(_id) 
 {
-	
+	state_.system_status = slidersystem::SYSTEM_STANDBY;
+	command_.system_status = slidersystem::SYSTEM_STANDBY;
 }
 
 
