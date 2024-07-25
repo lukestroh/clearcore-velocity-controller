@@ -60,6 +60,12 @@
 #include "ClearPathMC.h"
 #include "system.h"
 
+#if  __ETHUDP_DEBUG__ || __CPMC_DEBUG__
+#define __SET_UP_SERIAL__ 1
+#else
+#define __SET_UP_SERIAL__ 0
+#endif
+
 
 // System state variables
 volatile bool neg_lim_switch_flag = false;
@@ -67,7 +73,9 @@ volatile bool pos_lim_switch_flag = false;
 volatile bool e_stop_flag = false;
 constexpr uint8_t DEBOUNCE_TIME = 10;
 
-#if __SERIAL_DEBUG__
+
+
+#if __SERIAL_DEBUG__ || __SET_UP_SERIAL__
 void set_up_serial(void) {
 	/* Set up Serial communication with computer for debugging */
 	ConnectorUsb.Mode(Connector::USB_CDC);
@@ -107,7 +115,7 @@ bool poll_switch(DigitalIn* switch_pin) {
 
 
 int main(void) {
-#if __SERIAL_DEBUG__ || __ETHUDP_DEBUG__
+#if __SERIAL_DEBUG__ || __SET_UP_SERIAL__
 	set_up_serial();
 #endif
 
