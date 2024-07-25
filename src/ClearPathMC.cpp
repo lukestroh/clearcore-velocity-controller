@@ -9,6 +9,10 @@
 #define __SERIAL_DEBUG__ 0
 #endif
 
+#ifndef __CPMC_DEBUG__
+#define __CPMC_DEBUG__ 0
+#endif
+
 #include "ClearPathMC.h"
 #include "interrupts.h"
 
@@ -50,7 +54,7 @@ void ClearPathMC::begin() {
 		
 	// Enable the motor
 	motor.EnableRequest(true);
-#if __SERIAL_DEBUG__
+#if __SERIAL_DEBUG__ || __CPMC_DEBUG__
 	ConnectorUsb.SendLine("Motor enabled.");
 #endif
 	// Enable pin interrupts TODO: This is totally in the wrong place, there should be a system manager file, would also clean up main.cpp
@@ -73,7 +77,7 @@ bool ClearPathMC::check_for_faults() {
 	if (motor.StatusReg().bit.MotorInFault) {
 		if (HANDLE_MOTOR_FAULTS) {
 			handle_motor_faults();
-#if __SERIAL_DEBUG__
+#if __SERIAL_DEBUG__ || __CPMC_DEBUG__
 			ConnectorUsb.SendLine("Motor fault detected. Move canceled.");	
 		}
 		else {
@@ -91,7 +95,7 @@ void ClearPathMC::handle_motor_faults() {
 	 *    Assumes motor is in fault 
 	 *      (this function is called when motor.StatusReg.MotorInFault == true)
 	 */
-#if __SERIAL_DEBUG__
+#if __SERIAL_DEBUG__ || __CPMC_DEBUG__
  	ConnectorUsb.SendLine("Handling fault: clearing faults by cycling enable signal to motor.");
 #endif
 	motor.EnableRequest(false);
@@ -104,7 +108,7 @@ void ClearPathMC::handle_motor_faults() {
 void ClearPathMC::assert_HLFB() {
 	/* Make sure the HLFB is connected */
 	while (motor.HlfbState() != MotorDriver::HLFB_ASSERTED && !motor.StatusReg().bit.MotorInFault) {
-#if __SERIAL_DEBUG__
+#if __SERIAL_DEBUG__ || __CPMC_DEBUG__
 		ConnectorUsb.SendLine("ERROR IN HLFB ASSERT:");
 		ConnectorUsb.Send("\tHLFB STATE: ");
 		ConnectorUsb.SendLine(motor.HlfbState());
@@ -151,14 +155,14 @@ void ClearPathMC::set_velocity(int vel) {
 	
 	// check the limit switch statuses
 	if (vel <= 0 && state_.system_status==slidersystem::NEG_LIM){
-		#if __SERIAL_DEBUG__
+		#if __SERIAL_DEBUG__ || __CPMC_DEBUG__
 		ConnectorUsb.SendLine("Commanded velocity was stopped by the negative limit switch");
 		#endif
 		target_velocity = 0;
 		return;
 	}
 	if (vel >= 0 && state_.system_status==slidersystem::POS_LIM){
-		#if __SERIAL_DEBUG__
+		#if __SERIAL_DEBUG__ || __CPMC_DEBUG__
 		ConnectorUsb.SendLine("Commanded velocity was stopped by the positive limit switch");
 		#endif
 		target_velocity = 0;
@@ -175,7 +179,7 @@ void ClearPathMC::set_velocity(int vel) {
 	else {
 		target_velocity = -1 * vel;
 	}
-#if __SERIAL_DEBUG__
+#if __SERIAL_DEBUG__ || __CPMC_DEBUG__
 	ConnectorUsb.Send("commanded vel: ");
 	ConnectorUsb.SendLine(vel);
 	ConnectorUsb.Send("target vel: ");
@@ -253,7 +257,7 @@ void ClearPathMC::move_at_target_velocity() {
 		
 	// Check to see if motor faulted during move
 	if (check_for_faults()) {
-#if __SERIAL_DEBUG__
+#if __SERIAL_DEBUG__ || __CPMC_DEBUG__
 		ConnectorUsb.SendLine("Motion may not have completed as expected. Proceed with caution.");
 	}
 	else {

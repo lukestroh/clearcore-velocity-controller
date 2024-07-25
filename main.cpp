@@ -107,15 +107,13 @@ bool poll_switch(DigitalIn* switch_pin) {
 
 
 int main(void) {
-#if __SERIAL_DEBUG__
+#if __SERIAL_DEBUG__ || __ETHUDP_DEBUG__
 	set_up_serial();
 #endif
 
 	// Set static address for the ClearCore Controller
-	//IpAddress local_ip = IpAddress(169, 254, 97, 177);
 	IpAddress local_ip(169, 254, 97, 177);
 	// Set remote (host) computer address
-	//IpAddress remote_ip = IpAddress(169, 254, 57, 209);
 	IpAddress remote_ip(169, 254, 57, 209);
 
 	EthUDP eth(local_ip, remote_ip);
@@ -232,11 +230,11 @@ int main(void) {
 		if (!poll_switch(&motor0.limit_switch_pin_neg)) {        // This is now working as it should?? Can it be?
 			motor0.state_.system_status = slidersystem::NEG_LIM;
 		}
-		else if (!poll_switch(&motor0.limit_switch_pin_pos)) {
+		if (!poll_switch(&motor0.limit_switch_pin_pos)) {
 			motor0.state_.system_status = slidersystem::POS_LIM;
 		}
 		
-		// Poll E-stop so user knows to properly reset the switch
+		// Poll E-stop so user knows to properly reset the switch TODO: move all e-stop stuff to interrupt
 		if (poll_switch(&motor0.emergency_stop_pin)) {
 			motor0.state_.system_status = slidersystem::E_STOP;
 			e_stop_flag = true;
