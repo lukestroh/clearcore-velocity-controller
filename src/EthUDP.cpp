@@ -97,7 +97,7 @@ void EthUDP::begin(void) {
 	else {
 		EthernetMgr.LocalIp(m_local_ip);
 		//EthernetMgr.GatewayIp(IpAddress(169,254, 93, 234));
-		//EthernetMgr.NetmaskIp(IpAddress(255, 255, 0, 0));
+		EthernetMgr.NetmaskIp(IpAddress(255, 255, 0, 0));
 	}
 	
 	// Begin listening on the local port for UDP datagrams

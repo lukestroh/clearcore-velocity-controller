@@ -249,7 +249,7 @@ void ClearPathMC::move_at_target_velocity() {
 		
 	// Wait for High-Level Feedback (HLFB) to assert (signaling if the motor has reached
 	// its target velocity)
-#if __SERIAL_DEBUG__
+#if __SERIAL_DEBUG__ || __CPMC_DEBUG__
 	ConnectorUsb.SendLine("Ramping speed, waiting for HLFB.");
 #endif
 
