@@ -9,15 +9,11 @@
 #define __SERIAL_DEBUG__ 0
 #endif
 
-#ifndef __ETHUDP_DEBUG__
-#define __ETHUDP_DEBUG__ 0
-#endif
-
 #include "EthUDP.h"
 
 EthUDP::EthUDP():
 	/* Initialize class variables */
-	m_local_ip(169, 254, 97, 177),
+	m_local_ip(169, 254, 57, 177),
 	m_local_port {8888},
 	m_remote_ip(169, 254, 57, 209),
 	m_remote_port {8888}
@@ -96,7 +92,7 @@ void EthUDP::begin(void) {
 	}
 	else {
 		EthernetMgr.LocalIp(m_local_ip);
-		//EthernetMgr.GatewayIp(IpAddress(169,254, 93, 234));
+		//EthernetMgr.GatewayIp(IpAddress(169,254, 93, 234)); // TODO: add these to the constructors
 		EthernetMgr.NetmaskIp(IpAddress(255, 255, 0, 0));
 	}
 	
@@ -151,7 +147,7 @@ void EthUDP::construct_data_msg(slidersystem::DataInterface* state) {
 	strcat(m_msg_buf, m_data_buf);
 	strcat(m_msg_buf, m_msg_footer);
 	
-#if __SERIAL_DEBUG__ || __ETHUDP_DEBUG__
+#if __SERIAL_DEBUG__ // || __ETHUDP_DEBUG__
 	ConnectorUsb.Send("Constructed msg: ");
 	ConnectorUsb.SendLine(m_msg_buf);
 #endif

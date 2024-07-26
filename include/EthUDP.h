@@ -11,6 +11,10 @@
 #ifndef ETHUDP_H_
 #define ETHUDP_H_
 
+#ifndef __ETHUDP_DEBUG__
+#define __ETHUDP_DEBUG__ 0
+#endif
+
 class EthUDP {
 	private:
 		// Local IP address, port

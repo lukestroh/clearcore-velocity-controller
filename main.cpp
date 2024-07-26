@@ -52,7 +52,7 @@
  */
 
 #ifndef __SERIAL_DEBUG__
-#define __SERIAL_DEBUG__ 0
+#define __SERIAL_DEBUG__ 1
 #endif
 
 #include "ClearCore.h"
@@ -60,7 +60,7 @@
 #include "ClearPathMC.h"
 #include "system.h"
 
-#if  __ETHUDP_DEBUG__ || __CPMC_DEBUG__
+#if __SERIAL_DEBUG__ || __ETHUDP_DEBUG__ || __CPMC_DEBUG__
 #define __SET_UP_SERIAL__ 1
 #else
 #define __SET_UP_SERIAL__ 0
@@ -115,16 +115,16 @@ bool poll_switch(DigitalIn* switch_pin) {
 
 
 int main(void) {
-#if __SERIAL_DEBUG__ || __SET_UP_SERIAL__
+#if __SET_UP_SERIAL__
 	set_up_serial();
 #endif
 
 	// Set static address for the ClearCore Controller
-	IpAddress local_ip(169, 254, 97, 177);
+	IpAddress local_ip(169, 254, 57, 177);
 	// Set remote (host) computer address
 	IpAddress remote_ip(169, 254, 57, 209);
 
-	EthUDP eth(local_ip, remote_ip);
+	EthUDP eth(local_ip, 8888, remote_ip, 44644);
 
 	ClearPathMC motor0(0);
 

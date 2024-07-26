@@ -9,10 +9,6 @@
 #define __SERIAL_DEBUG__ 0
 #endif
 
-#ifndef __CPMC_DEBUG__
-#define __CPMC_DEBUG__ 0
-#endif
-
 #include "ClearPathMC.h"
 #include "interrupts.h"
 
@@ -64,7 +60,7 @@ void ClearPathMC::begin() {
 	
 	// Wait for HLFB
 	assert_HLFB();
-#if __SERIAL_DEBUG__
+#if __SERIAL_DEBUG__ || __CPMC_DEBUG__
 	ConnectorUsb.SendLine("Motor setup complete.");
 #endif
 }
@@ -95,7 +91,7 @@ void ClearPathMC::handle_motor_faults() {
 	 *    Assumes motor is in fault 
 	 *      (this function is called when motor.StatusReg.MotorInFault == true)
 	 */
-#if __SERIAL_DEBUG__ || __CPMC_DEBUG__
+#if __SERIAL_DEBUG__ // || __CPMC_DEBUG__
  	ConnectorUsb.SendLine("Handling fault: clearing faults by cycling enable signal to motor.");
 #endif
 	motor.EnableRequest(false);
@@ -108,7 +104,7 @@ void ClearPathMC::handle_motor_faults() {
 void ClearPathMC::assert_HLFB() {
 	/* Make sure the HLFB is connected */
 	while (motor.HlfbState() != MotorDriver::HLFB_ASSERTED && !motor.StatusReg().bit.MotorInFault) {
-#if __SERIAL_DEBUG__ || __CPMC_DEBUG__
+#if __SERIAL_DEBUG__ // || __CPMC_DEBUG__
 		ConnectorUsb.SendLine("ERROR IN HLFB ASSERT:");
 		ConnectorUsb.Send("\tHLFB STATE: ");
 		ConnectorUsb.SendLine(motor.HlfbState());
@@ -155,7 +151,7 @@ void ClearPathMC::set_velocity(int vel) {
 	
 	// check the limit switch statuses
 	if (vel <= 0 && state_.system_status==slidersystem::NEG_LIM){
-		#if __SERIAL_DEBUG__ || __CPMC_DEBUG__
+		#if __SERIAL_DEBUG__  || __CPMC_DEBUG__
 		ConnectorUsb.SendLine("Commanded velocity was stopped by the negative limit switch");
 		#endif
 		target_velocity = 0;
@@ -249,7 +245,7 @@ void ClearPathMC::move_at_target_velocity() {
 		
 	// Wait for High-Level Feedback (HLFB) to assert (signaling if the motor has reached
 	// its target velocity)
-#if __SERIAL_DEBUG__ || __CPMC_DEBUG__
+#if __SERIAL_DEBUG__// || __CPMC_DEBUG__
 	ConnectorUsb.SendLine("Ramping speed, waiting for HLFB.");
 #endif
 
@@ -257,7 +253,7 @@ void ClearPathMC::move_at_target_velocity() {
 		
 	// Check to see if motor faulted during move
 	if (check_for_faults()) {
-#if __SERIAL_DEBUG__ || __CPMC_DEBUG__
+#if __SERIAL_DEBUG__// || __CPMC_DEBUG__
 		ConnectorUsb.SendLine("Motion may not have completed as expected. Proceed with caution.");
 	}
 	else {
