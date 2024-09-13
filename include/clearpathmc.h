@@ -28,7 +28,7 @@ class ClearPathMC {
 		MotorDriver& motor = ConnectorM0;
 		
 		// A reference to the maximum clockwise and counter-clockwise velocities set in
-		// the MSP software. These must match the values in MSP software
+		// the MSP software. These must match the values in MSP software. DO NOT CHANGE UNLESS THIS IS ALSO CHANGED.
 		const int32_t m_max_velocity = 1000;
 		const int8_t m_calibration_velocity = -100;
 		
