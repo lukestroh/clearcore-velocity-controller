@@ -16,7 +16,7 @@ EthUDP::EthUDP():
 	m_local_ip(169, 254, 57, 177),
 	m_local_port {8888},
 	m_remote_ip(169, 254, 57, 209),
-	m_remote_port {8888}
+	m_remote_port {44644}
 {
 	
 }
@@ -25,7 +25,7 @@ EthUDP::EthUDP(IpAddress _local_ip):
 	m_local_ip(_local_ip),
 	m_local_port {8888},
 	m_remote_ip(169, 254, 57, 209),
-	m_remote_port {8888}
+	m_remote_port {44644}
 {
 	
 	
@@ -35,7 +35,7 @@ EthUDP::EthUDP(IpAddress _local_ip, int _local_port):
 	m_local_ip(_local_ip),
 	m_local_port(_local_port),
 	m_remote_ip(169, 254, 57, 209),
-	m_remote_port {8888}
+	m_remote_port {44644}
 {
 	
 }
@@ -44,7 +44,7 @@ EthUDP::EthUDP(IpAddress _local_ip, IpAddress _remote_ip):
 	m_local_ip(_local_ip),
 	m_local_port {8888},
 	m_remote_ip(_remote_ip),
-	m_remote_port {8888}
+	m_remote_port {44644}
 {
 	
 }
@@ -140,7 +140,7 @@ void EthUDP::construct_data_msg(slidersystem::DataInterface* state) {
 	sprintf(m_data_buf, "%f", state->vel);
 	
 	// Create c-str msg
-	strcat(m_msg_buf, m_msg_status_header); // TODO: For some reason status_header gets set to 0. Needs a debugger.
+	strcat(m_msg_buf, m_msg_status_header);
 	strcat(m_msg_buf, m_status_buf);
 	strcat(m_msg_buf, m_delimiter);
 	strcat(m_msg_buf, m_msg_data_header);

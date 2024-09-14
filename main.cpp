@@ -143,16 +143,17 @@ int main(void) {
 				
 		// If new data, parse for new motor control
 		if (eth.new_data) {
-			#if __SERIAL_DEBUG__
-			ConnectorUsb.Send("Command - status: ");
-			ConnectorUsb.Send(motor0.command_.system_status);
-			ConnectorUsb.Send(" rpm: ");
-			ConnectorUsb.SendLine(motor0.command_.vel);
 			
-			ConnectorUsb.Send("State - status: ");
-			ConnectorUsb.Send(motor0.state_.system_status);
-			ConnectorUsb.Send(" rpm: ");
-			ConnectorUsb.SendLine(motor0.state_.vel);
+			#if __SERIAL_DEBUG__
+			//ConnectorUsb.Send("Command - status: ");
+			//ConnectorUsb.Send(motor0.command_.system_status);
+			//ConnectorUsb.Send(" rpm: ");
+			//ConnectorUsb.SendLine(motor0.command_.vel);
+			//
+			//ConnectorUsb.Send("State - status: ");
+			//ConnectorUsb.Send(motor0.state_.system_status);
+			//ConnectorUsb.Send(" rpm: ");
+			//ConnectorUsb.SendLine(motor0.state_.vel);
 			#endif
 			switch (motor0.command_.system_status) {
 				case slidersystem::E_STOP:
@@ -160,6 +161,7 @@ int main(void) {
 					break;
 				case slidersystem::SYSTEM_OK: // set_velocity() deals with case, but with state_. Is it worth doing an additional check here? Looks like it's faster...
 					// Set the new target velocity
+					ConnectorUsb.SendLine("YES");
 					motor0.state_.system_status = slidersystem::SYSTEM_OK; // TODO: does this defeat the point of having a standby check in the set_velocity function?
 					if (motor0.command_.vel > motor0.state_.vel) {
 						motor0.set_velocity(motor0.state_.vel + 1);
@@ -183,9 +185,8 @@ int main(void) {
 						motor0.calibrate(); // blocking, runs until negative limit switch hit. TODO: change to either side
 					}
 					break;
-				// check the limit switch statuses
+				// check the limit switch statuses TODO: does this even need to be checked? Does host ever command a switch? NO.
 				case slidersystem::NEG_LIM:
-					//curr_vel = -1 * motor0.state_.vel; // negative sign is flipped
 					if (motor0.state_.vel <= 0){
 						#if __SERIAL_DEBUG__
 						ConnectorUsb.SendLine("Commanded velocity was stopped by the negative limit switch");
@@ -194,7 +195,6 @@ int main(void) {
 					}
 					break;
 				case slidersystem::POS_LIM:
-					//curr_vel = -1 * motor0.state_.vel; // negative sign is flipped
 					if (motor0.state_.vel >= 0){
 						#if __SERIAL_DEBUG__
 						ConnectorUsb.SendLine("Commanded velocity was stopped by the positive limit switch");

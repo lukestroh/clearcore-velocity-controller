@@ -15,7 +15,7 @@
 #define CLEARPATHMC_H_
 
 #ifndef __CPMC_DEBUG__
-#define __CPMC_DEBUG__ 0
+#define __CPMC_DEBUG__ 1
 #endif
 
 // To enable automatic fault handling, #define HANDLE_MOTOR_FAULTS (1)
