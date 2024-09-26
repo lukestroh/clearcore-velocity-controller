@@ -192,7 +192,7 @@ void ClearPathMC::set_standby() {
 
 
 void ClearPathMC::move_at_target_velocity() {
-	/* Move the motor at the set target velocity */
+	/* Move the motor at the set target velocity. Update the motor's state. */
 	double current_motor_velocity = -1 * state_.vel;
 	
 	// Check motor status

@@ -52,7 +52,7 @@
  */
 
 #ifndef __SERIAL_DEBUG__
-#define __SERIAL_DEBUG__ 1
+#define __SERIAL_DEBUG__ 0
 #endif
 
 #include "ClearCore.h"
@@ -135,6 +135,8 @@ int main(void) {
 		e_stop_flag = true;
 	}
 	eth.send_packet(&motor0.state_);
+	
+	uint32_t last_time_us = Microseconds();
 		
 	// Main loop
 	while (true) {
@@ -251,7 +253,14 @@ int main(void) {
 		// Move to target velocity (blocking)
 		motor0.move_at_target_velocity();
 		
-		// Send status, velocity data to the ROS2 node.
+		// Send status, velocity data to the ROS2 node. Ensure regular timing (tune if necessary).
+		while (Microseconds() - last_time_us < 625)	{
+#if __SERIAL_DEBUG__
+				ConnectorUsb.SendLine("Loop wait");
+#endif
+			} // 571 = int( (1/1750) * 1,0000,000 ) // 1600 is an even 625...
+		last_time_us = Microseconds();
 		eth.send_packet(&motor0.state_);
+		
 	}
 }
