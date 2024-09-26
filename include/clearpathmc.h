@@ -14,20 +14,21 @@
 #ifndef CLEARPATHMC_H_
 #define CLEARPATHMC_H_
 
+#ifndef __CPMC_DEBUG__
+#define __CPMC_DEBUG__ 0
+#endif
+
 // To enable automatic fault handling, #define HANDLE_MOTOR_FAULTS (1)
 // To disable automatic fault handling, #define HANDLE_MOTOR_FAULTS (0)
 #define HANDLE_MOTOR_FAULTS (0)
 
 class ClearPathMC {	
-	private:	
-		// Emergency stop pin
-		DigitalIn& emergency_stop_pin = ConnectorDI6;
-		
+	private:		
 		// Motor
 		MotorDriver& motor = ConnectorM0;
 		
 		// A reference to the maximum clockwise and counter-clockwise velocities set in
-		// the MSP software. These must match the values in MSP software
+		// the MSP software. These must match the values in MSP software. DO NOT CHANGE UNLESS THIS IS ALSO CHANGED.
 		const int32_t m_max_velocity = 1000;
 		const int8_t m_calibration_velocity = -100;
 		
@@ -49,6 +50,8 @@ class ClearPathMC {
 		// Limit switch pins
 		DigitalIn& limit_switch_pin_neg = ConnectorDI7;
 		DigitalIn& limit_switch_pin_pos = ConnectorDI8;
+		// Emergency stop pin
+		DigitalIn& emergency_stop_pin = ConnectorDI6;
 		
 		// Motor state structs
 		slidersystem::DataInterface command_;
