@@ -5,15 +5,27 @@
  * Author: Luke Strohbehn
  */
 
-#include "ClearPathMC.h"
+#ifndef __SERIAL_DEBUG__
+#define __SERIAL_DEBUG__ 0
+#endif
 
-ClearPathMC::ClearPathMC() {}
+#include "ClearPathMC.h"
+#include "interrupts.h"
+
+extern volatile bool neg_lim_switch_flag;
+extern volatile bool pos_lim_switch_flag;
+extern volatile bool e_stop_flag;
+
+ClearPathMC::ClearPathMC() {
+	state_.system_status = slidersystem::SYSTEM_STANDBY;
+	command_.system_status = slidersystem::SYSTEM_STANDBY;
+}
 
 
 ClearPathMC::ClearPathMC(int _id): 
 	motor_id(_id) 
 {
-	
+	ClearPathMC();
 }
 
 
@@ -38,12 +50,19 @@ void ClearPathMC::begin() {
 		
 	// Enable the motor
 	motor.EnableRequest(true);
+#if __SERIAL_DEBUG__ || __CPMC_DEBUG__
 	ConnectorUsb.SendLine("Motor enabled.");
-		
+#endif
+	// Enable pin interrupts TODO: This is totally in the wrong place, there should be a system manager file, would also clean up main.cpp
+	limit_switch_pin_neg.InterruptHandlerSet(&neg_lim_switch_callback, InputManager::FALLING, true); // What if we did LOW... would it then trigger all of the time, letting us use 'read_interrupt'?
+	limit_switch_pin_pos.InterruptHandlerSet(&pos_lim_switch_callback, InputManager::FALLING, true);
+	emergency_stop_pin.InterruptHandlerSet(&emergency_stop_callback, InputManager::RISING, true);
+	
 	// Wait for HLFB
 	assert_HLFB();
-	
+#if __SERIAL_DEBUG__ || __CPMC_DEBUG__
 	ConnectorUsb.SendLine("Motor setup complete.");
+#endif
 }
 
 
@@ -53,11 +72,13 @@ bool ClearPathMC::check_for_faults() {
 	*/
 	if (motor.StatusReg().bit.MotorInFault) {
 		if (HANDLE_MOTOR_FAULTS) {
-			ConnectorUsb.SendLine("Motor fault detected. Move canceled.");
 			handle_motor_faults();
+#if __SERIAL_DEBUG__ || __CPMC_DEBUG__
+			ConnectorUsb.SendLine("Motor fault detected. Move canceled.");	
 		}
 		else {
 			ConnectorUsb.SendLine("Motor fault detected. Move canceled. Enable automatic fault handling by setting HANDLE_MOTOR FAULTS to 1.");
+#endif
 		}
 		return true;
 	}
@@ -70,7 +91,9 @@ void ClearPathMC::handle_motor_faults() {
 	 *    Assumes motor is in fault 
 	 *      (this function is called when motor.StatusReg.MotorInFault == true)
 	 */
+#if __SERIAL_DEBUG__ // || __CPMC_DEBUG__
  	ConnectorUsb.SendLine("Handling fault: clearing faults by cycling enable signal to motor.");
+#endif
 	motor.EnableRequest(false);
 	Delay_ms(10);
 	motor.EnableRequest(true);
@@ -81,6 +104,7 @@ void ClearPathMC::handle_motor_faults() {
 void ClearPathMC::assert_HLFB() {
 	/* Make sure the HLFB is connected */
 	while (motor.HlfbState() != MotorDriver::HLFB_ASSERTED && !motor.StatusReg().bit.MotorInFault) {
+#if __SERIAL_DEBUG__ // || __CPMC_DEBUG__
 		ConnectorUsb.SendLine("ERROR IN HLFB ASSERT:");
 		ConnectorUsb.Send("\tHLFB STATE: ");
 		ConnectorUsb.SendLine(motor.HlfbState());
@@ -89,32 +113,87 @@ void ClearPathMC::assert_HLFB() {
 		
 		ConnectorUsb.Send("\tHLFB Percent: ");
 		ConnectorUsb.SendLine(motor.HlfbPercent());
+#endif
 		Delay_ms(100);
 		continue;
 	}
 }
 
 
-void ClearPathMC::get_velocity() {
-	
-}
-
-void ClearPathMC::set_velocity(double vel) {
-	/* Set the target velocity of the ClearPath MC motor, according to maximum velocity limits */
-	if (vel > max_velocity_CCW) {
-		target_velocity = max_velocity_CW;
-	}
-	else if (vel < -max_velocity_CCW) {
-		target_velocity = max_velocity_CCW;
+float ClearPathMC::get_velocity() {
+	/* 
+	Get the current velocity from the HLFB
+	The duty cycle scales as a percentage of the maximum motor speed configured in the currently selected operating mode.
+		- 5% duty cycle = 0% max speed
+		- 95% duty cycle = 100% max speed
+	HLFB output de-asserts (i.e., 0% duty cycle, "off", non-conducting) when the motor is disabled or shutdown.
+	*/
+	MotorDriver::HlfbStates hlfb_state = motor.HlfbState();
+	if (hlfb_state == MotorDriver::HLFB_HAS_MEASUREMENT) {
+		// Get the measured speed as a percent of Max Speed
+		float hlfb_vel_percent = motor.HlfbPercent();
+		float hlfb_vel = hlfb_vel_percent * m_max_velocity;
+		return hlfb_vel;
 	}
 	else {
-		target_velocity = vel;
+		return 0.0;
 	}
+}
+
+void ClearPathMC::set_velocity(int vel) {
+	/* Set the target velocity of the ClearPath MC motor, according to maximum velocity limits. Commands are sent as positive RPM==positive direction (away from motor). In reality, positive RPM values drive the base to the direction of the motor. */
+	
+	// Check if standby or e-stop
+	if (state_.system_status==slidersystem::E_STOP || state_.system_status==slidersystem::SYSTEM_STANDBY) {
+		target_velocity = 0;
+		return;
+	}
+	
+	// check the limit switch statuses
+	if (vel <= 0 && this->state_.system_status==slidersystem::NEG_LIM){
+		#if __SERIAL_DEBUG__  || __CPMC_DEBUG__
+		ConnectorUsb.SendLine("Commanded velocity was stopped by the negative limit switch");
+		#endif
+		target_velocity = 0;
+		return;
+	}
+	if (vel >= 0 && this->state_.system_status==slidersystem::POS_LIM){
+		#if __SERIAL_DEBUG__ || __CPMC_DEBUG__
+		ConnectorUsb.SendLine("Commanded velocity was stopped by the positive limit switch");
+		#endif
+		target_velocity = 0;
+		return;
+	} 
+	
+	// Correct command to speed direction
+	if (vel > m_max_velocity) {
+		target_velocity = -1 * m_max_velocity;
+	}
+	else if (vel < -1 * m_max_velocity) {
+		target_velocity = m_max_velocity;
+	}
+	else {
+		target_velocity = -1 * vel;
+	}
+#if __SERIAL_DEBUG__ || __CPMC_DEBUG__
+	ConnectorUsb.Send("commanded vel: ");
+	ConnectorUsb.SendLine(vel);
+	ConnectorUsb.Send("target vel: ");
+	ConnectorUsb.SendLine(target_velocity);
+	ConnectorUsb.Send("Curr vel: ");
+	ConnectorUsb.SendLine(state_.vel);
+	//Delay_ms(1000);
+#endif
+}
+
+void ClearPathMC::set_standby() {
+	set_velocity(0);
 }
 
 
 void ClearPathMC::move_at_target_velocity() {
-	/* Move the motor at the set target velocity */
+	/* Move the motor at the set target velocity. Update the motor's state. */
+	double current_motor_velocity = -1 * state_.vel;
 	
 	// Check motor status
 	check_for_faults();
@@ -123,7 +202,7 @@ void ClearPathMC::move_at_target_velocity() {
 	// new velocity is greater or less than the previously commanded velocity
 	// If greater, Input A begins the quadrature. If less, Input B begins the
 	// quadrature.
-	int32_t curr_velocity_rounded = round(current_velocity / velocity_resolution);
+	int32_t curr_velocity_rounded = round(current_motor_velocity / velocity_resolution);
 	int32_t target_velocity_rounded = round(target_velocity / velocity_resolution);
 	int32_t velocity_difference = labs(target_velocity_rounded - curr_velocity_rounded);
 	
@@ -133,7 +212,11 @@ void ClearPathMC::move_at_target_velocity() {
 	}
 	
 	for (int32_t i = 0; i < velocity_difference; ++i) {
-		if (target_velocity > current_velocity) {
+		// If a flag is raised via interrupts
+		if (e_stop_flag || neg_lim_switch_flag || pos_lim_switch_flag) {
+			target_velocity = 0;
+		}
+		if (target_velocity > current_motor_velocity) {
 			// Toggle Input A to begin the quadrature signal
 			motor.MotorInAState(true);
 			// Command a 5 microsecond delay to ensure proper signal timing
@@ -158,18 +241,49 @@ void ClearPathMC::move_at_target_velocity() {
 	}
 	
 	// Update the current velocity
-	current_velocity = target_velocity;
+	state_.vel = -1 * target_velocity;
 		
 	// Wait for High-Level Feedback (HLFB) to assert (signaling if the motor has reached
 	// its target velocity)
+#if __SERIAL_DEBUG__// || __CPMC_DEBUG__
 	ConnectorUsb.SendLine("Ramping speed, waiting for HLFB.");
-	assert_HLFB();
+#endif
+
+	//assert_HLFB();    // Comment out to improve function speed
 		
 	// Check to see if motor faulted during move
 	if (check_for_faults()) {
+#if __SERIAL_DEBUG__// || __CPMC_DEBUG__
 		ConnectorUsb.SendLine("Motion may not have completed as expected. Proceed with caution.");
 	}
 	else {
 		ConnectorUsb.SendLine("Move done.");
-	}	
+#endif
+	}
+
+}
+
+void ClearPathMC::calibrate() {
+	/* Send the moving base to the motor-side (negative) limit switch */
+	while (state_.system_status == slidersystem::SYSTEM_CALIBRATING) {
+		// TODO: receive message telling the calibration to be performed on the neg or pos limit switch		
+		if (neg_lim_switch_flag) {
+			set_velocity(0);
+			move_at_target_velocity();
+			neg_lim_switch_flag = false;
+			state_.system_status = slidersystem::NEG_LIM;
+			return;
+ 		}
+		
+		// Exit calibration if E-stop
+		if (e_stop_flag) {
+			state_.system_status = slidersystem::E_STOP;
+			return;
+		}
+
+		// During calibration, move toward negative limit switch
+		set_velocity(m_calibration_velocity);
+		move_at_target_velocity();
+		//_eth.send_packet(&system_status, target_velocity);
+	}
 }

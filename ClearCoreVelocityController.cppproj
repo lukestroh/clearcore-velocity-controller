@@ -262,6 +262,12 @@
     <Compile Include="Device_Startup\startup_same53.c">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="include\interrupts.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="include\system.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="src\ClearPathMC.cpp">
       <SubType>compile</SubType>
     </Compile>
