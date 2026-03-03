@@ -122,7 +122,7 @@ void EthUDP::read_packet(slidersystem::DataInterface* command_interface) {
 			if (m_token != NULL) {
 				command_interface->vel = atof(m_token);
 			}
-		}		
+		}		 
 	}
 }
 

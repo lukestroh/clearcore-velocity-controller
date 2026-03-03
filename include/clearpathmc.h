@@ -67,6 +67,15 @@ class ClearPathMC {
 		
 		void move_at_target_velocity();
 		void calibrate();
+		//The code inside of these notes has been added for position control
+		void set_position_steps(int32_t posStepsAbs);
+		void service_position_move();      // non-blocking motion service
+		void stop_position_move();
+		bool position_move_done() const;
+		
+		int32_t target_position_steps = 0;
+		bool position_move_active = false;
+		//The code inside of these notes has been added for position control
 		
 		//void stop();
 };

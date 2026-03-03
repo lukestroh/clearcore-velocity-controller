@@ -130,6 +130,9 @@ int main(void) {
 
 	eth.begin();
 	motor0.begin();
+	
+	ConnectorUsb.SendLine("BOOT OK");
+	
 	if (poll_switch(&motor0.emergency_stop_pin)) {
 		motor0.state_.system_status = slidersystem::E_STOP;
 		e_stop_flag = true;
@@ -140,8 +143,25 @@ int main(void) {
 		
 	// Main loop
 	while (true) {
+		
+		static uint32_t last = 0;
+		if (Milliseconds() - last > 1000) {
+			last = Milliseconds();
+			ConnectorUsb.SendLine("RUNNING");
+		}
+		
 		// Read data from the ROS2 hardware interface, store in motor command interface.
 		eth.read_packet(&motor0.command_);
+				
+				
+				static bool did_test = false;
+				if (!did_test) {
+					motor0.state_.system_status = slidersystem::SYSTEM_OK;
+					motor0.set_position_steps(5000);   // small move
+					did_test = true;
+				}
+				
+				//motor0.service_position_move();
 				
 		// If new data, parse for new motor control
 		if (eth.new_data) {
@@ -158,66 +178,54 @@ int main(void) {
 			//ConnectorUsb.SendLine(motor0.state_.vel);
 			#endif
 			switch (motor0.command_.system_status) {
-				case slidersystem::E_STOP:
+				
+
+					case slidersystem::E_STOP:
 					e_stop_flag = true;
 					break;
-				case slidersystem::SYSTEM_OK: // set_velocity() deals with case, but with state_. Is it worth doing an additional check here? Looks like it's faster...
-					// Set the new target velocity
-					ConnectorUsb.SendLine("YES");
-					motor0.state_.system_status = slidersystem::SYSTEM_OK; // TODO: does this defeat the point of having a standby check in the set_velocity function?
-					if (motor0.command_.vel > motor0.state_.vel) {
-						motor0.set_velocity(motor0.state_.vel + 1);
-					}
-					else if (motor0.command_.vel < motor0.state_.vel) {
-						motor0.set_velocity(motor0.state_.vel - 1);
-					}
+
+					case slidersystem::SYSTEM_OK:
+					motor0.state_.system_status = slidersystem::SYSTEM_OK;
+					motor0.set_position_steps(motor0.command_.pos_steps);
 					break;
-				case slidersystem::SYSTEM_STANDBY:
+
+					case slidersystem::SYSTEM_STANDBY:
 					motor0.state_.system_status = slidersystem::SYSTEM_STANDBY;
-					motor0.set_standby();
+					motor0.stop_position_move();
 					break;
-				case slidersystem::SYSTEM_CALIBRATING:
-					// Poll the pin to see if the slider is already at the switch. // TODO: get emergency-emergency limit switches?
-					if (!poll_switch(&motor0.limit_switch_pin_neg)) {
-						motor0.state_.system_status = slidersystem::NEG_LIM;
-					}
-					else {
-						motor0.state_.system_status = slidersystem::SYSTEM_CALIBRATING;
-						eth.send_packet(&motor0.state_);
-						motor0.calibrate(); // blocking, runs until negative limit switch hit. TODO: change to either side
-					}
+
+					case slidersystem::SYSTEM_CALIBRATING:
+				 // TODO: implement non-blocking homing
+					motor0.state_.system_status = slidersystem::SYSTEM_CALIBRATING;
+					motor0.stop_position_move();      // ensure we don't move unexpectedly
 					break;
-				// check the limit switch statuses TODO: does this even need to be checked? Does host ever command a switch? NO.
-				case slidersystem::NEG_LIM:
-					if (motor0.state_.vel <= 0){
-						#if __SERIAL_DEBUG__
-						ConnectorUsb.SendLine("Commanded velocity was stopped by the negative limit switch");
-						#endif
-						motor0.set_velocity(0);
-					}
+
+					case slidersystem::NEG_LIM:
+					motor0.state_.system_status = slidersystem::NEG_LIM;
+					motor0.stop_position_move();
 					break;
-				case slidersystem::POS_LIM:
-					if (motor0.state_.vel >= 0){
-						#if __SERIAL_DEBUG__
-						ConnectorUsb.SendLine("Commanded velocity was stopped by the positive limit switch");
-						#endif
-						motor0.set_velocity(0);
-					}
+
+					case slidersystem::POS_LIM:
+					motor0.state_.system_status = slidersystem::POS_LIM;
+					motor0.stop_position_move();
 					break;
+				
 			}
 			eth.new_data = false;
 		}
 		
 		// Limit switch check
 		if (neg_lim_switch_flag) {
-			motor0.set_velocity(0);
-			motor0.move_at_target_velocity();
+		//	motor0.set_velocity(0);
+		//	motor0.move_at_target_velocity();
+		  motor0.stop_position_move();
 			motor0.state_.system_status = slidersystem::NEG_LIM;
 			neg_lim_switch_flag = false;
 		}
 		if (pos_lim_switch_flag) {
-			motor0.set_velocity(0);
-			motor0.move_at_target_velocity();
+		//	motor0.set_velocity(0);
+		//	motor0.move_at_target_velocity();
+		 motor0.stop_position_move();
 			motor0.state_.system_status = slidersystem::POS_LIM;
 			pos_lim_switch_flag = false;
 		}
@@ -225,8 +233,9 @@ int main(void) {
 		// E stop check
 		if (e_stop_flag) {
 			while (1) {
-				motor0.set_velocity(0);
-				motor0.move_at_target_velocity();
+				//motor0.set_velocity(0);
+				//motor0.move_at_target_velocity();
+				motor0.stop_position_move();
 				motor0.state_.system_status = slidersystem::E_STOP;
 #if __SERIAL_DEBUG__
 				ConnectorUsb.SendLine("EMERGENCY STOP TRIGGERED. CHECK ALL HARDWARE.");
@@ -250,9 +259,15 @@ int main(void) {
 			e_stop_flag = true;
 		}
 		
-		// Move to target velocity (blocking)
-		motor0.move_at_target_velocity();
 		
+		
+
+		// Move to target velocity (blocking)
+		//motor0.move_at_target_velocity();
+		motor0.service_position_move();
+
+
+
 		// Send status, velocity data to the ROS2 node. Ensure regular timing (tune if necessary).
 		while (Microseconds() - last_time_us < 625)	{
 #if __SERIAL_DEBUG__

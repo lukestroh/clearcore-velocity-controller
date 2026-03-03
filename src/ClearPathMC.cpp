@@ -36,8 +36,9 @@ void ClearPathMC::begin() {
 	/* Configure motor settings for mode and HLFB */
 	
 	// Set all motor connectors to the correct mode for Manual Velocity mode
-	MotorMgr.MotorModeSet(MotorManager::MOTOR_ALL, Connector::CPM_MODE_A_DIRECT_B_DIRECT);
-	
+	//MotorMgr.MotorModeSet(MotorManager::MOTOR_ALL, Connector::CPM_MODE_A_DIRECT_B_DIRECT);
+	MotorMgr.MotorModeSet(MotorManager::MOTOR_ALL, Connector::CPM_MODE_STEP_AND_DIR);
+
 	// Put the motor connector into HLFB mode to read bipolar PWM
 	motor.HlfbMode(MotorDriver::HLFB_MODE_HAS_BIPOLAR_PWM);
 	
@@ -285,5 +286,73 @@ void ClearPathMC::calibrate() {
 		set_velocity(m_calibration_velocity);
 		move_at_target_velocity();
 		//_eth.send_packet(&system_status, target_velocity);
+	}
+}
+void ClearPathMC::set_position_steps(int32_t posStepsAbs) {
+	// Standby / E-stop blocks motion
+	if (state_.system_status == slidersystem::E_STOP || 
+	state_.system_status == slidersystem::SYSTEM_STANDBY) {
+		position_move_active = false;
+		return;
+	}
+
+	// If sitting on a limit, only allow moves away from it
+	if (state_.system_status == slidersystem::NEG_LIM && posStepsAbs <= state_.pos_steps) {
+		position_move_active = false;
+		return;
+	}
+	if (state_.system_status == slidersystem::POS_LIM && posStepsAbs >= state_.pos_steps) {
+		position_move_active = false;
+		return;
+	}
+
+	target_position_steps = posStepsAbs;
+}
+
+void ClearPathMC::stop_position_move() {
+	motor.MoveStopAbrupt();     // immediate stop of step generator
+	position_move_active = false;
+}
+
+bool ClearPathMC::position_move_done() const {
+	return !position_move_active;
+}
+
+void ClearPathMC::service_position_move() {
+	// Any interrupt flags -> stop motion
+	if (e_stop_flag || neg_lim_switch_flag || pos_lim_switch_flag) {
+		stop_position_move();
+		return;
+	}
+
+	// Motor faults -> stop motion
+	if (check_for_faults()) {
+		stop_position_move();
+		return;
+	}
+
+	// If not moving and already at target, do nothing
+	if (!position_move_active && target_position_steps == state_.pos_steps) {
+		return;
+	}
+
+	// Start move ONCE if not already moving
+	if (!position_move_active) {
+		motor.EnableRequest(true);
+
+		bool accepted = motor.Move(target_position_steps, StepGenerator::MOVE_TARGET_ABSOLUTE);
+		if (accepted) {
+			position_move_active = true;
+			} else {
+			position_move_active = false;
+		}
+	}
+
+	// Poll completion (non-blocking)
+	if (position_move_active) {
+		if (motor.StepsComplete()) {
+			position_move_active = false;
+			state_.pos_steps = target_position_steps;
+		}
 	}
 }

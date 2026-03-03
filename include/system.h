@@ -12,6 +12,7 @@
 
 #ifndef __SYSTEM_H__
 #define __SYSTEM_H__
+#include <stdint.h> 
 
 namespace slidersystem
 {
@@ -27,6 +28,7 @@ namespace slidersystem
 	struct DataInterface {
 		SystemStatus system_status = SystemStatus::SYSTEM_STANDBY;
 		double vel = 0.0;
+		int32_t pos_steps = 0;
 	};
 
 } // namespace system
